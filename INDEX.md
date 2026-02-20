@@ -7,12 +7,12 @@
 
 ## About This Guide
 
-This is a Markdown conversion of the VTK Users Guide, originally published in 2010 for VTK 5.0. The guide provides in-depth coverage of VTK's core concepts, visualization techniques, and programming interfaces across C++, Python, Java, and Tcl.
+This is a Markdown conversion of the VTK Users Guide, originally published in 2010 for VTK 5.0 and updated for modern VTK. The guide provides in-depth coverage of VTK's core concepts, visualization techniques, and programming interfaces across C++, Python, and Java.
 
 **Guide Specifications:**
 - **Original Format**: PDF (536 pages)
 - **VTK Version**: 5.0 (circa 2010)
-- **Languages Covered**: C++, Python, Java, Tcl
+- **Languages Covered**: C++, Python, Java
 - **Conversion**: High-quality Markdown with 300 DPI images
 
 ---
@@ -28,7 +28,7 @@ Introduction to VTK's fundamental architecture and object model. Covers the two-
 - Object model: vtkObject, reference counting, smart pointers
 - Visualization pipeline: sources, filters, mappers
 - Rendering engine: actors, props, mappers, renderers
-- Creating applications in C++, Tcl, Java, and Python
+- Creating applications in C++, Java, and Python
 - Language conversion guidelines
 
 ---
@@ -206,7 +206,6 @@ Each chapter is self-contained with extensive code examples. Use the chapter sum
 Examples are provided in multiple languages:
 - **C++** - Most comprehensive, full access to VTK features
 - **Python** - Rapid prototyping and scripting
-- **Tcl** - Legacy but still functional
 - **Java** - Object-oriented applications
 
 ### Running Examples
