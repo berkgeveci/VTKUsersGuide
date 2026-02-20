@@ -1,14 +1,14 @@
 # Chapter 3: System Overview
 
-The purpose of this chapter is to provide you with an overview of the Visualization Toolkit system, and to show you the basic information you’ll need to create applications in C++, Java, Tcl, and Python. We begin by introducing basic system concepts and object model abstractions. We close the chapter by demonstrating these concepts and describing what you’ll need to know to build applications.
+The purpose of this chapter is to provide you with an overview of the Visualization Toolkit system, and to show you the basic information you'll need to create applications in C++, Java, and Python. We begin by introducing basic system concepts and object model abstractions. We close the chapter by demonstrating these concepts and describing what you’ll need to know to build applications.
 
 ## 3.1 System Architecture
 
-The Visualization Toolkit consists of two basic subsystems: a compiled C++ class library and an “interpreted” wrapper layer that lets you manipulate the compiled classes using the languages Java, Tcl, and Python. See Figure 3–1 below:
+The Visualization Toolkit consists of two basic subsystems: a compiled C++ class library and an "interpreted" wrapper layer that lets you manipulate the compiled classes using the languages Java and Python. See Figure 3–1 below:
 
 ![Figure 3-1: The Visualization Toolkit architecture](images/Figure_3-1.png)
 
-*Figure 3–1: The Visualization Toolkit consists of a compiled (C++) core wrapped with various interpreted languages (Java, Tcl, Python).*
+*Figure 3–1: The Visualization Toolkit consists of a compiled (C++) core wrapped with various interpreted languages (Java, Python).*
 
 The advantage of this architecture is that you can build efficient (in both CPU and memory usage) algorithms in the compiled C++ language, and retain the rapid code development features of interpreted languages (avoidance of compile/link cycle, simple but powerful tools, and access to GUI tools). Of course, for those proficient in C++ and who have the tools to do so, applications can be built entirely in C++.
 
@@ -42,15 +42,22 @@ obj->Delete();
 
 From this point forward it is no longer safe to use the original pointer to access the object because the pointer does not own a reference to it. In order to ensure proper management of object references every call to `New()` must be paired with a later call to `Delete()` to be sure no references are leaked.
 
-A "smart pointer" implementation is provided by the class template `vtkSmartPointer<>` which simplifies object management. The above example may be re-written:
+The preferred modern approach is to use `vtkNew<>`, which automatically manages object lifetime. When a `vtkNew` variable goes out-of-scope, it automatically decrements the reference count. No call to `Delete()` is needed:
 
 ```cpp
-vtkSmartPointer<vtkObjectBase> obj =
-vtkSmartPointer<vtkExampleClass>::New();
+vtkNew<vtkExampleClass> obj;
 otherObject->SetExample(obj);
 ```
 
-In this case the smart pointer automatically manages the reference it owns. When the smart pointer variable goes out-of-scope and is no longer used, such as when a function in which it is a local variable returns, it automatically informs the object by decrementing the reference count. By using the static `New()` method provided by the smart pointer no raw pointer ever needs to hold a reference to the object, so no call to `Delete()` is needed.
+For cases requiring shared ownership, `vtkSmartPointer<>` can be used instead:
+
+```cpp
+vtkSmartPointer<vtkExampleClass> obj =
+    vtkSmartPointer<vtkExampleClass>::New();
+otherObject->SetExample(obj);
+```
+
+In both cases the smart pointer automatically manages the reference it owns. When the variable goes out-of-scope, it automatically informs the object by decrementing the reference count.
 
 **Run-Time Type Information.** In C++ the real type of an object may be different from the type of pointer used to reference it. All classes in the public interface of VTK have simple identifiers for class names (no templates), so a string is sufficient to identify them. The type of a VTK object may be obtained at run-time with the `GetClassName()` method:
 
@@ -114,31 +121,31 @@ There are a large number (over 50) of specialized props such as vtkImageActor (u
 
 **vtkLookupTable, vtkColorTransferFunction, and vtkPiecewiseFunction.** Visualizing scalar data often involves defining a mapping from a scalar value to a color and opacity. This is true both in geometric surface rendering where the opacity will define the translucency of the surface, and in volume rendering where the opacity will represent the opacity accumulated along some length of ray passing through the volume. For geometric rendering, this mapping is typically created using a vtkLookupTable, and in volume rendering both the vtkColorTransferFunction and the vtkPiecewiseFunction will be utilized.
 
-**A minimal example.** The following example (adapted from ./VTK/Examples/Rendering/Cxx/Cylinder.cxx) shows how some of these objects can be used to specify and render a scene.
+**A minimal example.** The following example shows how some of these objects can be used to specify and render a scene.
 
 ```cpp
-vtkCylinderSource *cylinder = vtkCylinderSource::New();
+vtkNew<vtkCylinderSource> cylinder;
 
-vtkPolyDataMapper *cylinderMapper = vtkPolyDataMapper::New();
+vtkNew<vtkPolyDataMapper> cylinderMapper;
 cylinderMapper->SetInputConnection(cylinder->GetOutputPort());
 
-vtkActor *cylinderActor = vtkActor::New();
+vtkNew<vtkActor> cylinderActor;
 cylinderActor->SetMapper(cylinderMapper);
 
-vtkRenderer *ren1 = vtkRenderer::New();
-ren1->AddActor(cylinderActor);
+vtkNew<vtkRenderer> renderer;
+renderer->AddActor(cylinderActor);
 
-vtkRenderWindow *renWin = vtkRenderWindow::New();
-renWin->AddRenderer(ren1);
+vtkNew<vtkRenderWindow> renderWindow;
+renderWindow->AddRenderer(renderer);
 
-vtkRenderWindowInteractor *iren = vtkRenderWindowInteractor::New();
-iren->SetRenderWindow(renWin);
+vtkNew<vtkRenderWindowInteractor> interactor;
+interactor->SetRenderWindow(renderWindow);
 
-renWin->Render();
-iren->Start();
+renderWindow->Render();
+interactor->Start();
 ```
 
-In this example we have directly created a vtkActor, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow and vtkRenderWindowInteractor. Note that a vtkProperty was automatically created by the actor, and a vtkLight and a vtkCamera were automatically created by the vtkRenderer.
+In this example we have directly created a vtkActor, vtkPolyDataMapper, vtkRenderer, vtkRenderWindow and vtkRenderWindowInteractor using `vtkNew<>` for automatic memory management. Note that a vtkProperty was automatically created by the actor, and a vtkLight and a vtkCamera were automatically created by the vtkRenderer.
 
 ### The Visualization Pipeline
 
@@ -176,15 +183,24 @@ which sets the input to the filter aFilter to the output of the filter anotherFi
 
 **Pipeline Execution.** In the previous section we discussed the need to control the execution of the visualization pipeline. In this section we will expand our understanding of some key concepts regarding pipeline execution.
 
-As indicated in the previous section, the VTK visualization pipeline only executes when data is required for computation (lazy evaluation). Consider this example where we instantiate a reader object and ask for the number of points as shown below. (The language shown here is Tcl.) 
+As indicated in the previous section, the VTK visualization pipeline only executes when data is required for computation (lazy evaluation). Consider this example where we instantiate a reader object and ask for the number of points as shown below.
 
-```tcl
-vtkPLOT3DReader reader 
-reader SetXYZFileName $VTK_DATA_ROOT/Data/combxyz.bin 
-[reader GetOutput] GetNumberOfPoints
+```python
+from vtkmodules.vtkIOParallel import vtkMultiBlockPLOT3DReader
+
+reader = vtkMultiBlockPLOT3DReader()
+reader.SetXYZFileName("Data/combxyz.bin")
+reader.GetOutput().GetNumberOfPoints()
 ```
 
-the reader object will return “0” from the GetNumberOfPoints() method call, despite the fact that the data file contains thousands of points. However, if you add the Update() method reader Update [reader GetOutput] GetNumberOfPoints the reader object will return the correct number. In the first example, the GetNumberOfPoints() methods does not require computation, and the object simply returns the current number of points, which is “0”. In the second example, the Update() method forces execution of the pipeline, thereby forcing the reader to execute and read the data from the file indicated. Once the reader has executed, the number of points in its output is set correctly.
+the reader object will return "0" from the `GetNumberOfPoints()` method call, despite the fact that the data file contains thousands of points. However, if you call the `Update()` method first:
+
+```python
+reader.Update()
+reader.GetOutput().GetBlock(0).GetNumberOfPoints()
+```
+
+the reader object will return the correct number. In the first example, the `GetNumberOfPoints()` method does not require computation, and the object simply returns the current number of points, which is "0". In the second example, the `Update()` method forces execution of the pipeline, thereby forcing the reader to execute and read the data from the file indicated. Once the reader has executed, the number of points in its output is set correctly.
 
 Normally, you do not need to manually invoke Update() because the filters are connected into a visualization pipeline. In this case, when the actor receives a request to render itself, it forwards the method to its mapper, and the Update() method is automatically sent through the visualization pipeline. A high-level view of pipeline execution appears in Figure 3–6.
 
@@ -200,294 +216,116 @@ Algorithms in the imaging pipeline always input and output image data objects. B
 
 This concludes our brief overview of the Visualization Toolkit system architecture. We recommend the The Visualization Toolkit An Object-Oriented Approach to 3D Graphics text for more details on many of the algorithms found in VTK. Learning by example is another helpful approach. Chapters 4 through 13 contain many annotated examples demonstrating various capabilities of VTK. Also, since source code is available, you may wish to study the examples found in the VTK/Examples directory of the VTK source tree.
 
-With this abbreviated introduction behind us, let’s look at ways to create applications in C++, Tcl, Java, and Python.
+With this abbreviated introduction behind us, let's look at ways to create applications in C++, Java, and Python.
 
 ## 3.2 Create An Application
 
-This section covers the basic information you need to develop VTK applications in the four programming languages Tcl, C++, Java, and Python. After reading this introduction, you should jump to the subsection(s) that discuss the language(s) you are interested in using. In addition to providing you with instructions on how to create and run a simple application, each section will show you how to take advantage of callbacks in that language.
+This section covers the basic information you need to develop VTK applications in C++, Java, and Python. After reading this introduction, you should jump to the subsection(s) that discuss the language(s) you are interested in using. In addition to providing you with instructions on how to create and run a simple application, each section will show you how to take advantage of callbacks in that language.
 
 ### User Methods, Observers, and Commands
 
-Callbacks (or user methods) are implemented in VTK using the Subject/Observer and Command design pattern. This means that nearly every class in VTK (every subclass of vtkObject) has an AddObserver() method that can be used to setup callbacks from VTK. The observer looks at every event invoked on an object, and if it matches one of the events that the observer is watching for, then an associated command is invoked (i.e., the callback). For example, all VTK filters invoke a StartEvent right before they start to execute. If you add an observer that watches for a StartEvent then it will get called every time that filter starts to execute. Consider the following Tcl script that creates an instance of vtkElevationFilter, and adds an observer for the StartEvent to call the procedure `PrintStatus`.
+Callbacks (or user methods) are implemented in VTK using the Subject/Observer and Command design pattern. This means that nearly every class in VTK (every subclass of vtkObject) has an AddObserver() method that can be used to setup callbacks from VTK. The observer looks at every event invoked on an object, and if it matches one of the events that the observer is watching for, then an associated command is invoked (i.e., the callback). For example, all VTK filters invoke a StartEvent right before they start to execute. If you add an observer that watches for a StartEvent then it will get called every time that filter starts to execute. Consider the following Python script that creates an instance of vtkElevationFilter, and adds an observer for the StartEvent to call the function `print_status`.
 
-```tcl
-proc PrintStatus {} {
-    puts "Starting to execute the elevation filter" 
-    }
-    vtkElevationFilter foo
-    foo AddObserver StartEvent PrintStatus
-```
-This type of functionality (i.e., callback) is available in all the languages VTK supports. Each section that follows will show a brief example of how to use it. Further discussion on user methods is provided in the chapter "Integrating With The Windowing System". (This chapter also discusses user interface integration issues.) To create your own application, we suggest starting with one of the examples that come with VTK. They can be found in VTK/Examples in the source distribution. In the source distribution the examples are organized first by topic and then by language. Under VTK/Examples you will find directories for different topics, and under the directories there will be subdirectories for different languages such as Tcl.
+```python
+from vtkmodules.vtkFiltersCore import vtkElevationFilter
 
-### Tcl
-Tcl is one of the easiest languages with which to start creating VTK applications. Once you have installed VTK, you should be able to run the Tcl examples that come with the distribution. Under UNIX you have to compile VTK with Tcl support. Under Windows you can install VTK using the provided installers.
+def print_status(obj, event):
+    print("Starting to execute the elevation filter")
 
-**Windows.** Under Windows, you can run a Tcl script just by double clicking on the file (Cone.tcl in this example). If nothing happens you might have an error in your script or a problem with associating Tcl files with the vtk.exe executable. To detect this you need to run vtk.exe first. vtk.exe can be found in your start menu under VTK. Once execution begins, a console window should appear with a prompt in it. At this prompt type in a cd command to change to the directory where Cone.tcl is located. Two examples are given below:
-
-```tcl
-% cd "c:/VTK/Examples/Tutorial/Step1/Tcl"
+foo = vtkElevationFilter()
+foo.AddObserver("StartEvent", print_status)
 ```
 
-Then you will need to source the example script using the following command:
-
-```tcl
-% source Cone.tcl
-```
-
-Tcl will try to execute Cone.tcl, and you will be able to see errors or warning messages that would otherwise not appear.
-
-**Unix.** Under UNIX, Tcl development can be done by running the VTK executable (after you have compiled the source code) that can be found in your binary directory (e.g., VTK-bin/bin/vtk, VTKSolaris/bin/vtk, etc.) and then providing the Tcl script as the first argument as shown below:
-
-```bash
-unix machine> cd VTK/Examples/Tutorial/Step1/Tcl
-unix machine> /home/VTK-Solaris/bin/vtk Cone.tcl
-```
-
-**User Methods in Tcl.** User methods can be set up as shown in the introduction of this section. An example can be found in Examples/Tutorial/Step2/Tcl/Cone2.tcl. The key changes are shown below:
-
-```tcl
-proc myCallback {} {
-    puts "Starting to render"
-}
-vtkRenderer ren1
-ren1 AddObserver StartEvent myCallback
-```
-
-You may instead simply provide the body of the proc directly to AddObserver():
-
-```tcl
-vtkRenderer ren1
-ren1 AddObserver StartEvent {puts "Starting to render"}
-```
+This type of functionality (i.e., callback) is available in all the languages VTK supports. Each section that follows will show a brief example of how to use it. Further discussion on user methods is provided in the chapter "Integrating With The Windowing System". (This chapter also discusses user interface integration issues.) To create your own application, we suggest starting with one of the examples that come with VTK. They can be found in VTK/Examples in the source distribution.
 
 ### C++
 
-Using C++ as your development language will typically result in smaller, faster, and more easily deployed applications than most any other language. C++ development also has the advantage that you do not need to compile any additional support for Tcl, Java, or Python. This section will show you how to create a simple VTK C++ application for the PC with Microsoft Visual C++ and also for UNIX using an appropriate compiler. We will start with a simple example called Cone.cxx which can be found in Examples/Tutorial/Step1/Cxx. For both Windows and UNIX you can use a source code installation of VTK or installed binaries. These examples will work with both.
+Using C++ as your development language will typically result in smaller, faster, and more easily deployed applications than most any other language. C++ development also has the advantage that you do not need to compile any additional support for Java or Python.
 
-The first step in building your C++ program is to use CMake to generate a makefile or workspace file, depending on your compiler. The CMakeList.txt file that comes with Cone.cxx (shown below) makes use of the FindVTK and UseVTK CMake modules. These modules attempt to locate VTK and then setup your include paths and link lines for building C++ programs. If they do not successfully find VTK, you will have to manually specify the appropriate CMake parameters and rerun CMake as necessary.
+The first step in building your C++ program is to use CMake to generate a makefile or project file, depending on your compiler. A typical CMakeLists.txt for a VTK C++ application uses `find_package` to locate VTK and specify the required components:
 
 ```cmake
-PROJECT (Step1)
+cmake_minimum_required(VERSION 3.12...3.28)
+project(MyConeExample)
 
-FIND_PACKAGE(VTK REQUIRED)
+find_package(VTK
+  COMPONENTS
+    CommonCore
+    FiltersSources
+    InteractionStyle
+    RenderingCore
+    RenderingOpenGL2)
 
-IF(NOT VTK_USE_RENDERING)
-  MESSAGE(FATAL_ERROR "Example ${PROJECT_NAME} requires VTK_USE_RENDERING.")
-ENDIF(NOT VTK_USE_RENDERING)
+if (NOT VTK_FOUND)
+  message(FATAL_ERROR "MyConeExample: Unable to find the VTK build folder.")
+endif()
 
-INCLUDE(${VTK_USE_FILE})
+add_executable(Cone Cone.cxx)
+target_link_libraries(Cone PRIVATE ${VTK_LIBRARIES})
 
-ADD_EXECUTABLE(Cone Cone.cxx)
-
-TARGET_LINK_LIBRARIES(Cone vtkRendering)
+vtk_module_autoinit(
+  TARGETS Cone
+  MODULES ${VTK_LIBRARIES})
 ```
 
-**Microsoft Visual C++.** Once you have run CMake for the Cone example you are ready to start Microsoft Visual C++ and load the generated solution file. For current .NET versions of the compiler this will be named Cone.sln. You can now select a build type (such as Release or Debug) and build your application. If you want to integrate VTK into an existing project that does not use CMake, you can copy the settings from this simple example into your existing workspaces.
+**Building.** Once you have run CMake, build the application using your platform's build tool. On UNIX, run `make` (or `ninja` if using the Ninja generator). CMake creates a makefile that specifies the include paths, link lines, and dependencies. If the application does not compile, check the build errors and make sure the VTK_DIR CMake variable points to a valid VTK build or install directory.
 
-Now consider an example of a true Windows application. The process is very similar to what we did above, except that we create a windows application instead of a console application, as shown in the following. Much of the code is standard Windows code and will be familiar to any Windows developer. This example can be found in VTK/Examples/GUI/Win32/SimpleCxx/ Win32Cone.cxx. Note that the only significant change to the CMakeLists.txt file is the addition of the WIN32 parameter in the ADD_EXECUTABLE command. #include "windows.h" #include "vtkConeSource.h" #include "vtkPolyDataMapper.h" #include "vtkRenderWindow.h" #include "vtkRenderWindowInteractor.h" #include "vtkRenderer.h" static HANDLE hinst;
+**User Methods in C++.** VTK provides several ways to set up callbacks using the observer/command design pattern.
+
+**Using vtkCallbackCommand.** The simplest approach for standalone callbacks is to use `vtkCallbackCommand` with a free function:
 
 ```cpp
-long FAR PASCAL WndProc(HWND, UINT, UINT, LONG);
-
-// define the vtk part as a simple c++ class
-class myVTKApp {
-public:
-    myVTKApp(HWND parent);
-    ~myVTKApp();
-private:
-    vtkRenderWindow *renWin;
-    vtkRenderer *renderer;
-    vtkRenderWindowInteractor *iren;
-    vtkConeSource *cone;
-    vtkPolyDataMapper *coneMapper;
-    vtkActor *coneActor;
-};
-```
-
-We start by including the required VTK include files. Next we have two standard windows prototypes followed by a small class definition called myVTKApp. When developing in C++, you should try to use object-oriented approaches instead of the scripting programming style found in many of the Tcl examples. Here we are encapsulating the VTK components of the application into a small class.
-
-This is the constructor for myVTKApp. As you can see it allocates the required VTK objects, sets their instance variables, and then connects them to form a visualization pipeline. Most of this is straightforward VTK code except for the vtkRenderWindow. This constructor takes a HWND handle to the parent window that should contain the VTK rendering window. We then use this in the SetParentId() method of vtkRenderWindow so that it will create its window as a child of the window passed to the constructor.
-
-```cpp
-myVTKApp::myVTKApp(HWND hwnd)
-```
-
-{ // Similar to Examples/Tutorial/Step1/Cxx/Cone.cxx // We create the basic parts of a pipeline and connect them
-
-```cpp
-this->renderer = vtkRenderer::New();
-this->renWin = vtkRenderWindow::New();
-this->renWin->AddRenderer(this->renderer);
-```
-
-// setup the parent window
-
-```cpp
-this->renWin->SetParentId(hwnd);
-this->iren = vtkRenderWindowInteractor::New();
-this->iren->SetRenderWindow(this->renWin);
-this->cone = vtkConeSource::New();
-this->cone->SetHeight( 3.0 );
-this->cone->SetRadius( 1.0 );
-this->cone->SetResolution( 10 );
-this->coneMapper = vtkPolyDataMapper::New();
-this->coneMapper->SetInputConnection(this->cone->GetOutputPort());
-this->coneActor = vtkActor::New();
-this->coneActor->SetMapper(this->coneMapper);
-this->renderer->AddActor(this->coneActor);
-this->renderer->SetBackground(0.2,0.4,0.3);
-this->renWin->SetSize(400,400);
-
-// Finally we start the interactor so that events will be handled
-this->renWin->Render();
-```
-
-The destructor simply frees all of the VTK objects that were allocated in the constructor.
-
-```cpp
-myVTKApp::~myVTKApp()
-```
-
+void PrintCameraPosition(
+  vtkObject* caller, unsigned long, void*, void*)
 {
-
-```cpp
-renWin->Delete();
-renderer->Delete();
-iren->Delete();
-cone->Delete();
-coneMapper->Delete();
-coneActor->Delete();
-```
-
-} The WinMain code here is all standard windows code and has no VTK references in it. As you can see the application has control of the event loop. Events are handled by the WndProc described later in this section. int PASCAL WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow) {
-
-```cpp
-static char szAppName[] = "Win32Cone";
-```
-
-HWND hwnd ; MSG msg ; WNDCLASS wndclass ; if (!hPrevInstance) {
-
-```cpp
-wndclass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-wndclass.lpfnWndProc = WndProc ;
-wndclass.cbClsExtra = 0 ;
-wndclass.cbWndExtra = 0 ;
-wndclass.hInstance = hInstance;
-wndclass.hIcon = LoadIcon(NULL,IDI_APPLICATION);
-wndclass.hCursor = LoadCursor (NULL, IDC_ARROW);
-wndclass.lpszMenuName = NULL;
-wndclass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
-wndclass.lpszClassName = szAppName;
-RegisterClass (&wndclass);
-```
-
+  vtkRenderer* renderer = static_cast<vtkRenderer*>(caller);
+  double* pos = renderer->GetActiveCamera()->GetPosition();
+  std::cout << pos[0] << " " << pos[1] << " " << pos[2] << "\n";
 }
 
-```cpp
-hinst = hInstance;
+vtkNew<vtkCallbackCommand> callback;
+callback->SetCallback(PrintCameraPosition);
+renderer->AddObserver(vtkCommand::StartEvent, callback);
 ```
 
-hwnd = CreateWindow ( szAppName, "Draw Window", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 400, 480, NULL, NULL, hInstance, NULL);
+**Using member function callbacks.** If you are working within a class, you can pass a member function pointer directly to `AddObserver()` without creating a separate command object:
 
 ```cpp
-ShowWindow (hwnd, nCmdShow);
-UpdateWindow (hwnd);
+renderer->AddObserver(
+  vtkCommand::StartEvent, this, &MyClass::OnStartRender);
 ```
 
-while (GetMessage (&msg, NULL, 0, 0)) {
+**Using a vtkCommand subclass.** For more complex callbacks that need to carry state, you can create a subclass of vtkCommand that overrides the `Execute()` method:
 
 ```cpp
-TranslateMessage (&msg);
-DispatchMessage (&msg);
-```
+class vtkMyCallback : public vtkCommand
+{
+public:
+  static vtkMyCallback* New() { return new vtkMyCallback; }
+  vtkTypeMacro(vtkMyCallback, vtkCommand);
 
-} return msg.wParam; } This WndProc is a very simple event handler. For a full application it would be significantly more complicated, but the key integration issues are the same. At the top of this function we declare a static reference to a myVTKApp instance. When handling the WM_CREATE method we create an Exit button and then construct an instance of myVTKApp passing in the handle to the current window. The vtkRenderWindowInteractor will handle all of the events for the vtkRenderWindow, so you do not need to handle them here. You probably will want to add code to handle resizing events so that the render window resizes appropriately with respect to your overall user interface. If you do not set the ParentId of the vtkRenderWindow, it will show up as a top-level independent window. Everything else should behave the same as before. long FAR PASCAL WndProc (HWND hwnd, UINT message, UINT wParam, LONG lParam) { static HWND ewin; static myVTKApp *theVTKApp; switch (message) { case WM_CREATE: { ewin = CreateWindow("button","Exit", WS_CHILD | WS_VISIBLE | SS_CENTER, 0,400,400,60, hwnd,(HMENU)2, (HINSTANCE)GetWindowLong(hwnd,GWL_HINSTANCE), NULL);
-
-```cpp
-theVTKApp = new myVTKApp(hwnd);
-```
-
-return 0; } case WM_COMMAND: switch (wParam) { case 2:
-
-```cpp
-PostQuitMessage (0);
-```
-
-if (theVTKApp) { delete theVTKApp;
-
-```cpp
-theVTKApp = NULL;
-}
-break;
-```
-
-} return 0; case WM_DESTROY:
-
-```cpp
-PostQuitMessage (0);
-```
-
-if (theVTKApp) { delete theVTKApp;
-
-```cpp
-theVTKApp = NULL;
-```
-
-} return 0; }
-
-```cpp
-return DefWindowProc (hwnd, message, wParam, lParam);
-}
-```
-
-**UNIX.** Creating a C++ application on UNIX is done by running CMake and then make. CMake creates a makefile that specifies the include paths, link lines, and dependencies. The make program then uses this makefile to compile the application. This should result in a Cone executable that you can run. If Cone.cxx does not compile then check the make errors and correct them. Make sure that the values in the top of CMakeCache.txt are valid. If it does compile, but you receive errors when you try running it, you might need to set your LD_LIBRARY_PATH as described in Chapter 2.
-
-**User Methods in C++.** You can add user methods (using the observer/command design pattern) in C++ by creating a subclass of vtkCommand that overrides the Execute() method. Consider the following example taken from VTK/Examples/Tutorial/Step2/Cxx/Cone2.cxx:
-
-```cpp
-class vtkMyCallback : public vtkCommand {
-    static myCallback *New() {return new vtkMyCallback;}
-    virtual void Execute(vtkObject *caller, unsigned long, void *) {
-        vtkRenderer *renderer = reinterpret_cast<vtkRenderer*>(caller);
-        cout << renderer->GetActiveCamera()->GetPosition()[0] << " "
-             << renderer->GetActiveCamera()->GetPosition()[1] << " "
-             << renderer->GetActiveCamera()->GetPosition()[2] << "\n";
+  void Execute(vtkObject* caller, unsigned long, void*) override
+  {
+    vtkRenderer* renderer = vtkRenderer::SafeDownCast(caller);
+    if (renderer)
+    {
+      double* pos = renderer->GetActiveCamera()->GetPosition();
+      std::cout << pos[0] << " " << pos[1] << " " << pos[2] << "\n";
     }
+  }
 };
+
+vtkNew<vtkMyCallback> callback;
+renderer->AddObserver(vtkCommand::StartEvent, callback);
 ```
 
-While the Execute() method is always passed the calling object (caller) you are not required to use it.
-
-If you do use the caller you will typically want to perform a SafeDownCast() to the actual type. For example:
-
-```cpp
-virtual void Execute(vtkObject *caller, unsigned long, void *callData) {
-    vtkRenderer *ren = vtkRenderer::SafeDownCast(caller);
-    if (ren) { ren->SetBackground(0.2,0.3,0.4); }
-}
-```
-
-Once you have created your subclass of vtkCommand you are ready to add an observer that will call your command on certain events. This can be done as follows:
-
-```cpp
-vtkMyCallback *mo1 = vtkMyCallback::New();
-ren1->AddObserver(vtkCommand::StartEvent,mo1);
-mo1->Delete();
-```
-
-The above code creates an instance of myCallback and then adds an observer on ren1 for the StartEvent. Whenever ren1 starts to render, the Execute() method of vtkMyCallback will be called. When ren1 is deleted, the callback will be deleted as well.
+Note that `SafeDownCast()` is the preferred way to convert the caller to the expected type, as it returns a null pointer if the cast is not valid.
 
 ### Java
 
-To create Java applications you must first have a working Java development environment. This section provides instructions for using Sun's JDK 1.3 or later on either Windows or UNIX. Once your JDK has been installed and you have installed VTK, you need to set your CLASSPATH environment variable to include the VTK classes. Under Microsoft Windows this can be set by right clicking on the My Computer icon, selecting the properties option, then selecting the Advanced tab, and then clicking the Environment Variables button. Then add a CLASSPATH environment variable and set it to include the path to your vtk.jar file, your Wrapping/Java directory, and the current directory.
+To create Java applications you must first have a working Java development environment. Once your JDK has been installed and you have built VTK with Java wrapping enabled, you need to set your CLASSPATH environment variable to include the path to your vtk.jar file and the current directory.
 
-For a Windows build it will be something like "C:\vtk-bin\bin\vtk.jar;C:\vtkbin\Wrapping\Java;.". Under UNIX you should set your CLASSPATH environment variable to something similar to "/yourdisk/vtk-bin/bin/vtk.jar;/yourdisk/vtk-bin/Wrapping/ Java;.".
-
-The next step is to byte compile your Java program. For starters try byte compiling (with javac) the Cone.java example that comes with VTK under VTK/Examples/Tutorial/Step1/Java.
-
-Then you should be able to run the resulting application using the java command. It should display a cone which rotates 360 degrees and then exits. The next step is to create your own applications using the examples provided as a starting point.
-
-**User Methods in Java.** You set up a callback by passing three arguments. The first is the name of the event you are interested in, the second is an instance of a class, the third is the name of the method you want to invoke. In this example we set up the StartEvent to invoke the myCallback method on me (which is an instance of Cone2). The myCallback method must of course be a valid method of Cone2 to avoid an error. (This code fragment is from VTK/Examples/Tutorial/Step2/Java/cone2.java.)
+**User Methods in Java.** You set up a callback by passing three arguments. The first is the name of the event you are interested in, the second is an instance of a class, the third is the name of the method you want to invoke. In this example we set up the StartEvent to invoke the myCallback method on me (which is an instance of Cone2). The myCallback method must of course be a valid method of Cone2 to avoid an error.
 
 ```java
 public void myCallback() {
@@ -502,45 +340,46 @@ ren1.AddObserver("StartEvent",me,"myCallback");
 
 ### Python
 
-If you have built VTK with Python support, a vtkpython executable will be created. Using this executable, you should be able to run Examples/Tutorial/Step1/Python/Cone.py as follows:
+VTK can be installed as a Python package using `pip install vtk`, or you can build VTK from source with Python wrapping enabled. Once installed, VTK classes are available through the `vtkmodules` package:
 
-```bash
-vtkpython Cone.py
+```python
+from vtkmodules.vtkFiltersSources import vtkConeSource
+from vtkmodules.vtkRenderingCore import vtkRenderer
 ```
 
-Creating your own Python scripts is a simple matter of using some of our example scripts as a starting point.
+Creating your own Python scripts is a simple matter of using some of the example scripts as a starting point.
 
 **User Methods in Python.** User methods can be set up by defining a function and then passing it as the argument to the AddObserver as shown below:
 
 ```python
 def myCallback(obj, event):
-    print "Starting to render"
+    print("Starting to render")
 
 ren1.AddObserver("StartEvent", myCallback)
 ```
 
-The complete source code for the example shown above is in VTK/Examples/Tutorial/Step2/Python/Cone2.py.
-
 ## 3.3 Conversion Between Languages
 
-As we have seen, VTK’s core is implemented in C++ and then wrapped with the Tcl, Java, and Python programming languages. This means that you have a language choice when developing applications. Your choice will depend on which language you are most comfortable with, the nature of the application, and whether you need access to internal data structures and/or have special performance requirements. C++ offers several advantages over the other languages when you need to access internal data structure or require the highest-performing application possible. However, using C++ means the extra burden of the compile/link cycle, which often slows the software development process.
+As we have seen, VTK's core is implemented in C++ and then wrapped with the Java and Python programming languages. This means that you have a language choice when developing applications. Your choice will depend on which language you are most comfortable with, the nature of the application, and whether you need access to internal data structures and/or have special performance requirements. C++ offers several advantages over the other languages when you need to access internal data structure or require the highest-performing application possible. However, using C++ means the extra burden of the compile/link cycle, which often slows the software development process.
 
-You may find yourself developing prototypes in an interpreted language such as Tcl and then converting them to C++. Or, you may discover example code (in the VTK distribution or from other users) that you wish to convert to your implementation language.
+You may find yourself developing prototypes in an interpreted language such as Python and then converting them to C++. Or, you may discover example code (in the VTK distribution or from other users) that you wish to convert to your implementation language.
 
 Converting VTK code from one language to another is fairly straightforward. Class names and method names remain the same across languages; what changes are the implementation details and GUI interface, if any. For example, the C++ statement
 
 ```cpp
-anActor->GetProperty()->SetColor(red,green,blue);
+anActor->GetProperty()->SetColor(red, green, blue);
 ```
 
-in Tcl becomes [anActor GetProperty] SetColor $red $green $blue in Java becomes
+in Java becomes
 
-```cpp
-anActor.GetProperty().SetColor(red,green,blue);
+```java
+anActor.GetProperty().SetColor(red, green, blue);
 ```
 
-and in Python becomes anActor.GetProperty().SetColor(red,green,blue) One major limitation you’ll find is that some C++ applications cannot be converted to the other three languages because of pointer manipulation.While it is always possible to get and set individual values from the wrapped languages, it is not always possible to obtain a raw pointer to quickly traverse and inspect or modify a large structure. If your application requires this level of data inspection or manipulation, you can either develop directly in C++ or extend VTK at the C++ level with your required high-performance classes, then use these new classes from your preferred interpreted language.
+and in Python becomes
 
-### Part II
+```python
+anActor.GetProperty().SetColor(red, green, blue)
+```
 
-### Learn VTK By Example
+One major limitation you'll find is that some C++ applications cannot be converted to the other languages because of pointer manipulation. While it is always possible to get and set individual values from the wrapped languages, it is not always possible to obtain a raw pointer to quickly traverse and inspect or modify a large structure. If your application requires this level of data inspection or manipulation, you can either develop directly in C++ or extend VTK at the C++ level with your required high-performance classes, then use these new classes from your preferred interpreted language.
