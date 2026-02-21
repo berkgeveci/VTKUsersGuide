@@ -2,7 +2,7 @@
 
 Visualization techniques may be classified into two broad categories: scientific visualization and information visualization. The two are mainly distinguished by the types of data they represent. Scientific visualization refers to the display of data having inherent spatiotemporal attributes, such as simulations, models, or images. With these types of data, the relative position of elements is known because each element has an inherent structure and placement in a three dimensional space. 
 
-Information visualization, on the other hand, is the visualization of all other forms of data. Metadata, relational databases, and general tabular data fall into this category. In these cases, the placement of individual elements is not fixed and an embedding must be performed to place similar or related elements closer together. Consider visualizing a group of people. One simple way to organize the people is to place them in a list or table. If accompanying information is also available, alternative formats may be helpful to the viewer. People could be presented in a 2D view, grouped by similarity in age, gender, occupation, etc. If “friendship” links are known (e.g. from a social networking website), they could be grouped into natural friendship groups formed by these links. If each person's current location is known, they could be arranged on a map (“Geospatial Visualization” on page207 for VTK's capabilities in that regard).
+Information visualization, on the other hand, is the visualization of all other forms of data. Metadata, relational databases, and general tabular data fall into this category. In these cases, the placement of individual elements is not fixed and an embedding must be performed to place similar or related elements closer together. Consider visualizing a group of people. One simple way to organize the people is to place them in a list or table. If accompanying information is also available, alternative formats may be helpful to the viewer. People could be presented in a 2D view, grouped by similarity in age, gender, occupation, etc. If "friendship" links are known (e.g. from a social networking website), they could be grouped into natural friendship groups formed by these links. If each person's current location is known, they could be arranged on a map.
 
 Other examples of data suitable for information visualization are databases, spreadsheets, XML, and any type of metadata such as demographic information of patients or parameters of simulation runs. For this type of visualization, algorithms such as clustering and graph layout are used to uncover salient relationships or determine a high-level picture of complex, heterogeneous data. 
 
@@ -12,7 +12,7 @@ The graph data structure consists of a collection of entities called vertices, a
 
 A tree is a type of graph that does not contain any cycles (sequences of connected edges that form a full loop). VTK's tree data structure is a rooted tree, which can be thought of as a hierarchy, with the root vertex on top. Trees can organize large amounts of data by grouping entities into multiple levels.
 
-Tables, graphs, and trees can represent complex data in several ways. The following sections provide some details about how to perform some basic operations and visualizations with these data structures.
+Tables, graphs, and trees can represent complex data in several ways. The following sections provide details about how to perform some basic operations and visualizations with these data structures.
 
 ## 8.1 Exploring Relationships in Tabular Data
 
@@ -20,76 +20,58 @@ Tables are a very common form of data. Plain text delimited files, spreadsheets,
 
 ### Converting a Table to a Graph
 
-The following python example demonstrates how to take this information, and with vtkTableToGraph, convert it into a vtkGraph data structure and display it in a graph view. Note that the script attempts to find the VTK data path, which may be explicitly defined in this and other examples by adding the parameters “-D <path>” to the command line when running the script. The following example is Python code for converting a simple table into a graph.
+The following Python example demonstrates how to take this information, and with vtkTableToGraph, convert it into a vtkGraph data structure and display it in a graph view. The following example is Python code for converting a simple table into a graph.
 
 ```python
-from vtk import *
-import vtk.util.misc
-import versionUtil
-datapath = vtk.util.misc.vtkGetDataRoot()
+from vtkmodules.vtkInfovisCore import (
+    vtkDelimitedTextReader,
+    vtkGroupLeafVertices,
+    vtkStringToCategory,
+    vtkTableToGraph,
+    vtkTableToTreeFilter,
+)
+from vtkmodules.vtkViewsInfovis import vtkGraphLayoutView
+from vtkmodules.vtkViewsCore import vtkViewTheme
+
 reader = vtkDelimitedTextReader()
-reader.SetFileName(datapath + '/Data/Infovis/medals.txt')
-reader.SetFieldDelimiterCharacters('\t')
+reader.SetFileName("medals.txt")
+reader.SetFieldDelimiterCharacters("\t")
 reader.SetHaveHeaders(True)
+
 ttg = vtkTableToGraph()
 ttg.SetInputConnection(reader.GetOutputPort())
-ttg.AddLinkVertex('Name', 'Name', False)
-ttg.AddLinkVertex('Country', 'Country', False)
-ttg.AddLinkVertex('Discipline', 'Discipline', False)
-ttg.AddLinkEdge('Name', 'Country')
-ttg.AddLinkEdge('Name', 'Discipline')
+ttg.AddLinkVertex("Name", "Name", False)
+ttg.AddLinkVertex("Country", "Country", False)
+ttg.AddLinkVertex("Discipline", "Discipline", False)
+ttg.AddLinkEdge("Name", "Country")
+ttg.AddLinkEdge("Name", "Discipline")
+
 category = vtkStringToCategory()
 category.SetInputConnection(ttg.GetOutputPort())
-category.SetInputArrayToProcess(0, 0, 0, 4, 'domain')
+category.SetInputArrayToProcess(0, 0, 0, 4, "domain")
+
 view = vtkGraphLayoutView()
-view.AddRepresentationFromInputConnection(
-category.GetOutputPort())
+view.AddRepresentationFromInputConnection(category.GetOutputPort())
 view.SetLayoutStrategyToSimple2D()
-view.SetVertexLabelArrayName('label')
+view.SetVertexLabelArrayName("label")
 view.VertexLabelVisibilityOn()
-view.SetVertexColorArrayName('category')
+view.SetVertexColorArrayName("category")
 view.ColorVerticesOn()
 view.SetVertexLabelFontSize(18)
+
 theme = vtkViewTheme.CreateMellowTheme()
 view.ApplyViewTheme(theme)
-rw = versionUtil.SetupView(view)
-versionUtil.ShowView(view)]
-```
 
-First we create a vtkDelimitedTextReader to read in the medals text file. This reader produces a vtkTable as its output, which is simply a list of named data arrays. The fields in this file are separated by tabs, so we set the field delimiter characters appropriately. We specify SetHaveHeaders(True) in order to assign column names from the first line in the file. Otherwise the columns would have generic names “Field 0”, “Field 1”, and so on, and data in the table would be assumed to start on the first line.
-
-You will notice the calls to versionUtil.SetupView and versionUtil.ShowView that are used to handle code near the end of this and other examples. This reflects a code change after VTK 5.4 which makes vtkRenderView contain a vtkRenderWindow. This eliminates the need for creating a render window manually and calling SetupRenderWindow(). Also, instead of calling methods such as ResetCamera() and Render() on the render window, these methods have been added to vtkRenderView, and should be called on the view instead. The following listing shows the contents of versionUtil.py. from vtk import * The following code example demonstrates setting up and displaying a VTK view in version 5.4 and later.
-
-```python
-from vtk import *
-def VersionGreaterThan(major, minor):
-v = vtkVersion()
-if v.GetVTKMajorVersion() > major:
-return True
-if v.GetVTKMajorVersion() == major and v.GetVTKMinorVersion() > minor:
-return True
-return False
-def SetupView(view):
-if not VersionGreaterThan(5, 4):
-win = vtkRenderWindow()
-view.SetupRenderWindow(win)
-return win
-else:
-return view.GetRenderWindow()
-def ShowView(view):
-if VersionGreaterThan(5, 4):
 view.ResetCamera()
 view.Render()
 view.GetInteractor().Start()
-else:
-view.GetRenderer().ResetCamera()
-view.GetRenderWindow().Render()
-view.GetRenderWindow().GetInteractor().Start()
 ```
 
-Now we wish to visualize some of the relationships in this table. The table has the following columns: “Name” contains the name of the athlete, “Country” has the athlete’s country, and “Discipline” contains the discipline. The table has the following columns: “Name” contains the name of the athlete, “Country” has the athlete’s country, and “Discipline” contains the disciplineof the event the athlete participated in (such as swimming, archery, etc.). One method for viewing the relationships in the graph is to use vtkTableToGraph to produce a vtkGraph from the table. vtkTableToGraph takes a vtkTable as input (and optionally a second “vertex table” input described later) and produces a vtkGraph whose structure, vertex attributes, and edge attributes are taken from the table.
+First we create a vtkDelimitedTextReader to read in the medals text file. This reader produces a vtkTable as its output, which is simply a list of named data arrays. The fields in this file are separated by tabs, so we set the field delimiter characters appropriately. We specify SetHaveHeaders(True) in order to assign column names from the first line in the file. Otherwise the columns would have generic names "Field 0", "Field 1", and so on, and data in the table would be assumed to start on the first line.
 
-The vtkTableToGraph algorithm needs to know what columns should be used to generate vertices, and what pairs of columns should become edges, linking vertices together. So, in our example, we may wish to make a graph whose vertices represent names, countries, and disciplines. To do this we call AddLinkVertex() with the name of a column to make vertices from. All distinct values in that column will become vertices in the graph. So, AddLinkVertex('Country', ...) will make a vertex in the output graph for each distinct country name in the “Country” column of the table. The second argument to AddLinkVertex() provides the domain to be associated with those vertices. Domains are important for entity resolution. If, for example, “Country” and “Name” were given the same domain name, a country named “Chad” would be merged with a person with the name “Chad”. Giving each column a different domain will avoid these conflicts. There are situations, however, where two columns of the table should be given the same domain. For example, in a table of communications, there may columns named “From” and “To”. These should be assigned the same domain (perhaps named “Person”), so that a person's vertex would be merged into the same vertex regardless of whether that person was a sender or a recipient. The third parameter of AddLinkVertex() is described in “Hidden Vertices” on page168.
+Now we wish to visualize some of the relationships in this table. The table has the following columns: "Name" contains the name of the athlete, "Country" has the athlete's country, and "Discipline" contains the discipline of the event the athlete participated in (such as swimming, archery, etc.). One method for viewing the relationships in the graph is to use vtkTableToGraph to produce a vtkGraph from the table. vtkTableToGraph takes a vtkTable as input (and optionally a second "vertex table" input described later) and produces a vtkGraph whose structure, vertex attributes, and edge attributes are taken from the table.
+
+The vtkTableToGraph algorithm needs to know what columns should be used to generate vertices, and what pairs of columns should become edges, linking vertices together. So, in our example, we may wish to make a graph whose vertices represent names, countries, and disciplines. To do this we call AddLinkVertex() with the name of a column to make vertices from. All distinct values in that column will become vertices in the graph. So, AddLinkVertex('Country', ...) will make a vertex in the output graph for each distinct country name in the “Country” column of the table. The second argument to AddLinkVertex() provides the domain to be associated with those vertices. Domains are important for entity resolution. If, for example, “Country” and “Name” were given the same domain name, a country named “Chad” would be merged with a person with the name “Chad”. Giving each column a different domain will avoid these conflicts. There are situations, however, where two columns of the table should be given the same domain. For example, in a table of communications, there may columns named “From” and “To”. These should be assigned the same domain (perhaps named “Person”), so that a person's vertex would be merged into the same vertex regardless of whether that person was a sender or a recipient. The third parameter of AddLinkVertex() is described in the "Hidden Vertices" section below.
 
 Now that the vertices are defined, we can define the set of edges in the graph with AddLinkEdge(). AddLinkEdge() takes two table column names, and produces an edge between two vertices A and B every time A and B appear together in the same row in those two columns. So the call AddLinkEdge('Name', 'Country') will add an edge in the graph between each athlete and his or her country. Similarly, AddLinkEdge('Name', 'Discipline') will add an edge between an athlete and each discipline he or she participates in. Figure 8–1 shows the result of converting the table of medals into a graph. The colors of the vertices in the graph indicate the domain to which they belong.Since you may only assign colors with a numeric array, the program uses vtkStringToCategory to convert the domain array (which contains strings), into numeric identifiers for each distinct vertex.
 
@@ -109,48 +91,57 @@ Therefore, to add vertex attributes, you must create a vertex table that contain
 
 ### Converting a Table to a Tree
 
-While a graph represents an arbitrarily complex structure, a tree has a much more restricted, and hence simpler, structure. In VTK, a vtkTree contains a rooted tree in which there is a hierarchy of vertices with a single root vertex on top. Outgoing edges flow down the tree, connecting “parent” vertices to “child” vertices. One example use for vtkTrees is to examine the structure of arbitrary XML files. A tree can be generated directly from any XML file simply by using the vtkXMLTreeReader. That reader parses the nested XML elements and creates a vtkTree. You may also create a categorical tree from tabular data. The following python code demonstrates how to use the vtkTableToTreeFilter and vtkGroupLeafVertices algorithms to do this. 
+While a graph represents an arbitrarily complex structure, a tree has a much more restricted, and hence simpler, structure. In VTK, a vtkTree contains a rooted tree in which there is a hierarchy of vertices with a single root vertex on top. Outgoing edges flow down the tree, connecting "parent" vertices to "child" vertices. One example use for vtkTrees is to examine the structure of arbitrary XML files. A tree can be generated directly from any XML file simply by using the vtkXMLTreeReader. That reader parses the nested XML elements and creates a vtkTree. You may also create a categorical tree from tabular data. The following Python code demonstrates how to use the vtkTableToTreeFilter and vtkGroupLeafVertices algorithms to do this.
 
 ```python
-VERTICES = 4 # Constant for SetInputArrayToProcess
-datapath = vtk.util.misc.vtkGetDataRoot()reader = vtkDelimitedTextReader()
-reader.SetFileName(datapath + '/Data/Infovis/medals.txt')
-reader.SetFieldDelimiterCharacters('\t')
+from vtkmodules.vtkInfovisCore import (
+    vtkDelimitedTextReader,
+    vtkGroupLeafVertices,
+    vtkStringToCategory,
+    vtkTableToTreeFilter,
+)
+from vtkmodules.vtkViewsInfovis import vtkTreeRingView
+
+VERTICES = 4  # Constant for SetInputArrayToProcess
+
+reader = vtkDelimitedTextReader()
+reader.SetFileName("medals.txt")
+reader.SetFieldDelimiterCharacters("\t")
 reader.SetHaveHeaders(True)
-if versionUtil.VersionGreaterThan(5,4):
 reader.OutputPedigreeIdsOn()
+
 ttt = vtkTableToTreeFilter()
 ttt.SetInputConnection(reader.GetOutputPort())
+
 group_disc = vtkGroupLeafVertices()
 group_disc.SetInputConnection(ttt.GetOutputPort())
-group_disc.SetInputArrayToProcess(0, 0, 0, VERTICES, 'Discipline')
-group_disc.SetInputArrayToProcess(1, 0, 0, VERTICES, 'Name')
+group_disc.SetInputArrayToProcess(0, 0, 0, VERTICES, "Discipline")
+group_disc.SetInputArrayToProcess(1, 0, 0, VERTICES, "Name")
+
 group_country = vtkGroupLeafVertices()
 group_country.SetInputConnection(group_disc.GetOutputPort())
-group_country.SetInputArrayToProcess(0, 0, 0, VERTICES, 'Country')
-group_country.SetInputArrayToProcess(1, 0, 0, VERTICES, 'Name')
+group_country.SetInputArrayToProcess(0, 0, 0, VERTICES, "Country")
+group_country.SetInputArrayToProcess(1, 0, 0, VERTICES, "Name")
+
 category = vtkStringToCategory()
-category.SetInputArrayToProcess(0, 0, 0, VERTICES, 'Name')
+category.SetInputArrayToProcess(0, 0, 0, VERTICES, "Name")
 category.SetInputConnection(group_country.GetOutputPort())
+
 view = vtkTreeRingView()
-view.AddRepresentationFromInputConnection(
-category.GetOutputPort())
+view.AddRepresentationFromInputConnection(category.GetOutputPort())
 view.RootAtCenterOn()
 view.SetInteriorRadius(1)
-view.SetAreaHoverArrayName('Name')
-view.SetAreaLabelArrayName('Name')
+view.SetAreaHoverArrayName("Name")
+view.SetAreaLabelArrayName("Name")
 view.AreaLabelVisibilityOn()
-view.SetAreaColorArrayName('category')
-if versionUtil.VersionGreaterThan(5,4):
+view.SetAreaColorArrayName("category")
 view.ColorAreasOn()
-else:
-view.ColorVerticesOn()
 view.SetAreaLabelFontSize(18)
 ```
 
 The code begins with reading the same tab-delimited file with Olympic medal data described in the previous sections. vtkTableToTreeFilter then performs the first basic step in converting our table into a tree. It produces a new vertex to serve as the root of the tree, then creates a child vertex for every row in the input table, associating the attributes in the table with the child vertices in the tree. This tree is not yet interesting since it only contains a single level with no meaningful structure. In our example, vtkTableToTreeFilter is followed by two instances of vtkGroupLeafVertices. Each of these filters adds a new level to the tree, grouping existing leaf vertices (i.e. vertices with no children) according to matching values in a particular array. The first instance of vtkGroupLeafVertices sets the main input array to be the “Discipline” attribute. This adds a new level below the root that contains one vertex for each unique value in the discipline array. The original leaf vertices are collected under each discipline vertex based on their value for that attribute.
 
-Similarly, the second vtkGroupLeafVertices adds a level representing countries below the disciplines. The data is already split by discipline, so each country may appear several times, once under each discipline where that country won a medal. This is one main difference between converting a table to a graph or a tree. Graphs are a more complex structure, which allows vertices representing the same entity to appear only once. Trees, on the other hand, are simpler structures that are often simpler to comprehend, but often require duplication of data because of their connectivity constraints. The result of converting the table into a tree and visualizing it with a vtkTreeRingView is shown in Figure 8–2. The tree ring view and graph layout view are described further in the “Graph Visualization Techniques” on page170. Simply reversing the two vtkGroupLeafVertices algorithms would produce a tree that was organized first by country, then by discipline.
+Similarly, the second vtkGroupLeafVertices adds a level representing countries below the disciplines. The data is already split by discipline, so each country may appear several times, once under each discipline where that country won a medal. This is one main difference between converting a table to a graph or a tree. Graphs are a more complex structure, which allows vertices representing the same entity to appear only once. Trees, on the other hand, are simpler structures that are often simpler to comprehend, but often require duplication of data because of their connectivity constraints. The result of converting the table into a tree and visualizing it with a vtkTreeRingView is shown in Figure 8–2. The tree ring view and graph layout view are described further in the "Graph Visualization Techniques" section below. Simply reversing the two vtkGroupLeafVertices algorithms would produce a tree that was organized first by country, then by discipline.
 
 ![Figure 8-2](images/Figure_8-2.png)
 *Figure 8–2 A table of Olympic medals visualized in a tree ring view.*
@@ -174,32 +165,31 @@ Other graph transformation algorithms include:
 
 ## 8.2 Graph Visualization Techniques
 
-Graph visualization is becoming increasingly important as a method for divining relationships between entities, entity clustering, and higher level abstractions. Graphs are typically visualized in twoor three-dimensions, with attempts to inject additional dimensional information through vertex and edge coloring, labeling, annotations, clustering, and icons. Because of the diversity available for displaying graphs including theoretical, heuristic, empirical and manual layout methods, graph visualization has become a mixture of both art and science requiring methods that can handle both flexibility and complexity while maintaining a fair amount of generality. These methods are typically broken down into methods for vertex layout, methods for edge layout and methods which display vertices and relationships with polygonal data structures (e.g., circles, rings, blocks, etc.). In addition to the layout methods, helper functionality for displaying graph attributes is also desirable (e.g., common coloring themes, labeling mechanisms, annotations and selections, etc.). To accommodate this flexibility while maintaining a high level of functionality, the graph visualization tools in VTK utilize `strategy' methods for layout of vertices and edges, and 'view' objects for centralizing common helper functionality associated with the visualization of graphs.
+Graph visualization is becoming increasingly important as a method for divining relationships between entities, entity clustering, and higher level abstractions. Graphs are typically visualized in two or three dimensions, with attempts to inject additional dimensional information through vertex and edge coloring, labeling, annotations, clustering, and icons. Because of the diversity available for displaying graphs including theoretical, heuristic, empirical and manual layout methods, graph visualization has become a mixture of both art and science requiring methods that can handle both flexibility and complexity while maintaining a fair amount of generality. These methods are typically broken down into methods for vertex layout, methods for edge layout and methods which display vertices and relationships with polygonal data structures (e.g., circles, rings, blocks, etc.). In addition to the layout methods, helper functionality for displaying graph attributes is also desirable (e.g., common coloring themes, labeling mechanisms, annotations and selections, etc.). To accommodate this flexibility while maintaining a high level of functionality, the graph visualization tools in VTK utilize `strategy' methods for layout of vertices and edges, and 'view' objects for centralizing common helper functionality associated with the visualization of graphs.
 
 To demonstrate basic capability, we present a simple example uses layouts and views to create graph displays in VTK see Figure 8–3. The remainder of this section will discuss additional flexibility available in performing graph visualization. The following code snippet creates a simple graph view of a random graph.
 
 ```python
-from vtk import *
+from vtkmodules.vtkInfovisCore import vtkRandomGraphSource
+from vtkmodules.vtkViewsInfovis import vtkGraphLayoutView
+from vtkmodules.vtkViewsCore import vtkViewTheme
 
-# create a random graph
+# Create a random graph
 source = vtkRandomGraphSource()
 source.SetNumberOfVertices(100)
 source.SetNumberOfEdges(110)
 source.StartWithTreeOn()
 
-#create a view to display the graph
+# Create a view to display the graph
 view = vtkGraphLayoutView()
 view.SetLayoutStrategyToSimple2D()
 view.ColorVerticesOn()
 view.SetVertexColorArrayName("vertex id")
 view.SetRepresentationFromInputConnection(source.GetOutputPort())
 
-# Apply a theme to the views theme = vtkViewTheme.CreateMellowTheme()
-
+# Apply a theme to the view
+theme = vtkViewTheme.CreateMellowTheme()
 view.ApplyViewTheme(theme)
-theme.FastDelete()
-
-#view.GetRenderWindow().SetSize(500,500)
 
 view.ResetCamera()
 view.Render()
@@ -229,7 +219,7 @@ To determine where vertices are positioned, one places a vtkGraphLayout class in
 - vtkTreeLayoutStrategy - Assigns points to the nodes of a tree in either a standard or radial layout. 
 - vtkTreeOrbitLayoutStrategy - Assigns points to the nodes of a tree to an orbital layout. Each parent is orbited by its children, recursively.
 
-To simplify the task of visualizing different graphs, the vertex layout strategies can be supplied directly to a view class. This is done by calling vtkGraphLayoutView::SetLayoutStrategy(vtkGraphLayoutStrategy *s) as in the preceding example. Views are discussed in greater depth in “Views and Representations” on page176.
+To simplify the task of visualizing different graphs, the vertex layout strategies can be supplied directly to a view class. This is done by calling vtkGraphLayoutView::SetLayoutStrategy(vtkGraphLayoutStrategy *s) as in the preceding example. Views are discussed in greater depth in the "Views and Representations" section below.
 
 ### Edge Layout
 
@@ -252,70 +242,80 @@ Once the layouts are complete, the graphs must still be converted to geometry: p
 The use of the preceding classes is demonstrated here in the following code example of drawing a graph. We are using a single strategy to do the initial graph layout; however, as noted earlier, the strategy classes are interchangeable, and new layout strategies can be applied by swapping out one strategy for another in this example.
 
 ```python
-from vtk import *
+from vtkmodules.vtkInfovisCore import vtkRandomGraphSource
+from vtkmodules.vtkInfovisLayout import (
+    vtkArcParallelEdgeStrategy,
+    vtkEdgeLayout,
+    vtkFast2DLayoutStrategy,
+    vtkGraphLayout,
+)
+from vtkmodules.vtkViewsInfovis import vtkGraphToGlyphs
+from vtkmodules.vtkInfovisLayout import vtkGraphToPolyData
+from vtkmodules.vtkRenderingCore import (
+    vtkActor,
+    vtkPolyDataMapper,
+    vtkRenderer,
+)
 
-# create a random graph
+# Create a random graph
 source = vtkRandomGraphSource()
 source.SetNumberOfVertices(100)
 source.SetNumberOfEdges(110)
 source.StartWithTreeOn()
 source.Update()
 
-# setup a strategy for laying out the graph
+# Setup a strategy for laying out the graph
 # NOTE: You can set additional options for each strategy, as desired
-
 strategy = vtkFast2DLayoutStrategy()
-#strategy = vtkSimple2DLayoutStrategy()
-#strategy = vtkCosmicTreeLayoutStrategy()
-#strategy = vtkForceDirectedLayoutStrategy()
-#strategy = vtkTreeLayoutStrategy()
+# strategy = vtkSimple2DLayoutStrategy()
+# strategy = vtkForceDirectedLayoutStrategy()
 
-# set the strategy on the layout
+# Set the strategy on the layout
 layout = vtkGraphLayout()
 layout.SetLayoutStrategy(strategy)
 layout.SetInputConnection(source.GetOutputPort())
 
-# create the renderer to help in sizing glyphs for the vertices
-ren = vtkRenderer()
+# Create the renderer to help in sizing glyphs for the vertices
+renderer = vtkRenderer()
 
-# Pipeline for displaying vertices - glyph -> mapper -> actor -> display
-# mark each vertex with a circle glyph
+# Pipeline for displaying vertices: glyph -> mapper -> actor -> display
+# Mark each vertex with a circle glyph
 vertex_glyphs = vtkGraphToGlyphs()
 vertex_glyphs.SetInputConnection(layout.GetOutputPort())
 vertex_glyphs.SetGlyphType(7)
 vertex_glyphs.FilledOn()
-vertex_glyphs.SetRenderer(ren)
+vertex_glyphs.SetRenderer(renderer)
 
-# create a mapper for vertex display
+# Create a mapper for vertex display
 vertex_mapper = vtkPolyDataMapper()
 vertex_mapper.SetInputConnection(vertex_glyphs.GetOutputPort())
-vertex_mapper.SetScalarRange(0,100)
+vertex_mapper.SetScalarRange(0, 100)
 vertex_mapper.SetScalarModeToUsePointFieldData()
 vertex_mapper.SelectColorArray("vertex id")
 
-# create the actor for displaying vertices
+# Create the actor for displaying vertices
 vertex_actor = vtkActor()
 vertex_actor.SetMapper(vertex_mapper)
 
-# Pipeline for displaying edges of the graph - layout -> lines -> mapper -> actor -> display
-# NOTE: If no edge layout is performed, all edges will be rendered as # line segments between vertices in the graph.
-
+# Pipeline for displaying edges: layout -> lines -> mapper -> actor -> display
+# NOTE: If no edge layout is performed, all edges will be rendered as
+# line segments between vertices in the graph.
 edge_strategy = vtkArcParallelEdgeStrategy()
 edge_layout = vtkEdgeLayout()
 edge_layout.SetLayoutStrategy(edge_strategy)
 edge_layout.SetInputConnection(layout.GetOutputPort())
+
 edge_geom = vtkGraphToPolyData()
 edge_geom.SetInputConnection(edge_layout.GetOutputPort())
 
-# create a mapper for edge display
+# Create a mapper for edge display
 edge_mapper = vtkPolyDataMapper()
 edge_mapper.SetInputConnection(edge_geom.GetOutputPort())
 
-# create the actor for displaying the edges
+# Create the actor for displaying the edges
 edge_actor = vtkActor()
 edge_actor.SetMapper(edge_mapper)
-edge_actor.GetProperty().SetColor(0.,0. ,0.)
-
+edge_actor.GetProperty().SetColor(0.0, 0.0, 0.0)
 edge_actor.GetProperty().SetOpacity(0.25)
 ```
 
@@ -335,31 +335,33 @@ Here is an example of performing edge bundling using splines. The following code
 
 
 ```cpp
-// Create a standard radial
-// tree layout strategy
-vtkTreeLayoutStrategy* treeStrategy =
-vtkTreeLayoutStrategy::New();
-treeStrategy->SetAngle(360.);
+#include <vtkGraphHierarchicalBundle.h>
+#include <vtkGraphLayout.h>
+#include <vtkNew.h>
+#include <vtkSplineFilter.h>
+#include <vtkTreeLayoutStrategy.h>
+
+// Create a standard radial tree layout strategy
+vtkNew<vtkTreeLayoutStrategy> treeStrategy;
+treeStrategy->SetAngle(360.0);
 treeStrategy->SetRadial(true);
 treeStrategy->SetLogSpacingValue(0.8);
 treeStrategy->SetLeafSpacing(0.9);
 
-// Layout the vertices of the tree
-// using the strategy just created
-vtkGraphLayout* treeLayout = Figure 8–5 The result of bundling graph
-vtkGraphLayout::New(); edges from the code.
-treeLayout->SetInput(realTree);
+// Layout the vertices of the tree using the strategy just created
+vtkNew<vtkGraphLayout> treeLayout;
+treeLayout->SetInputData(realTree);
 treeLayout->SetLayoutStrategy(treeStrategy);
 
 // Use the tree to control the layout of the graph edges
-vtkGraphHierarchicalBundle* bundle =
-vtkGraphHierarchicalBundle::New();
-bundle->SetInput(0, graph);
+vtkNew<vtkGraphHierarchicalBundle> bundle;
+bundle->SetInputData(0, graph);
 bundle->SetInputConnection(1, treeLayout->GetOutputPort(0));
 bundle->SetBundlingStrength(0.9);
 bundle->SetDirectMapping(true);
-// Smooth the edges using with splines
-vtkSplineFilter* spline = vtkSplineFilter::New();
+
+// Smooth the edges with splines
+vtkNew<vtkSplineFilter> spline;
 spline->SetInputConnection(0, bundle->GetOutputPort(0));
 ```
 
@@ -390,56 +392,52 @@ Views in VTK combine rendering logic, interaction, visualization parameters, and
 
 You can add data objects to a view in two ways. One way is to create the appropriate representation, set the inputs on the representation by calling SetInputConnection() or SetInput(), then call AddRepresentation() on the view. The other way that is normally more convenient is to have the view automatically create the default representation for you through calling AddRepresentationFromInput() or AddRepresentationFromInputConnection(). These methods accept a data object or algorithm output port, create a representation appropriate for the view, add the representation to the view, and return a pointer to the new representation.
 
-The following Python code generates a simple vtkRenderView with a sphere source displayed with a vtkSurfaceRepresentation.
+The following Python code generates a simple vtkRenderView with a sphere source displayed with a vtkRenderedSurfaceRepresentation.
 
 ```python
-from vtk import *
-import versionUtil
-if versionUtil.VersionGreaterThan(5, 4):
+from vtkmodules.vtkFiltersSources import vtkSphereSource
+from vtkmodules.vtkViewsInfovis import vtkRenderedSurfaceRepresentation
+from vtkmodules.vtkViewsCore import vtkRenderView
+
 rep = vtkRenderedSurfaceRepresentation()
-else:
-rep = vtkSurfaceRepresentation()
+
 sphere = vtkSphereSource()
 sphere.SetPhiResolution(100)
 sphere.SetThetaResolution(100)
 rep.SetInputConnection(sphere.GetOutputPort())
+
 view = vtkRenderView()
 view.AddRepresentation(rep)
-rw = versionUtil.SetupView(view)
-versionUtil.ShowView(view)
-```
 
-Note that the example code reflects the name change from vtkSurfaceRepresentation to vtkRenderedSurfaceRepresentation after VTK 5.4.
+view.ResetCamera()
+view.Render()
+view.GetInteractor().Start()
+```
 
 ![Figure 8-7](images/Figure_8-7.png)
 
 *Figure 8–7 A vtkSurfaceRepresentation of a sphere rendered in a vtkRenderView. A rectangular region has been selected and highlighted.*
 
-An example of using the vtkTreeRingView class for graph visualization is shown below. Note that this view takes two inputs, one for the graph and one for the tree. This code generates the center image in Figure 8-6. The tree ring contains the VTK classes organized by library, while the internal edges show subclass to superclass relationships. # Import a grapRush with an embedded hierarchy (tree).
+An example of using the vtkTreeRingView class for graph visualization is shown below. Note that this view takes two inputs, one for the graph and one for the tree. This code generates the center image in Figure 8-6. The tree ring contains the VTK classes organized by library, while the internal edges show subclass to superclass relationships.
 
 ```python
-from vtk import *
-import vtk.util.misc
-import versionUtil
-
-datapath = vtk.util.misc.vtkGetDataRoot()
-
+from vtkmodules.vtkIOInfovis import vtkXMLTreeReader
+from vtkmodules.vtkViewsInfovis import vtkTreeRingView
+from vtkmodules.vtkViewsCore import vtkViewTheme
 
 reader1 = vtkXMLTreeReader()
-
-reader1.SetFileName(datapath + "/Data/Infovis/XML/vtkclasses.xml")
-
+reader1.SetFileName("vtkclasses.xml")
 reader1.SetEdgePedigreeIdArrayName("tree edge")
-reader1.GenerateVertexPedigreeIdsOff();
-reader1.SetVertexPedigreeIdArrayName("id");
+reader1.GenerateVertexPedigreeIdsOff()
+reader1.SetVertexPedigreeIdArrayName("id")
+
 reader2 = vtkXMLTreeReader()
-reader2.SetFileName(datapath + "/Data/Infovis/XML/vtklibrary.xml")
+reader2.SetFileName("vtklibrary.xml")
 reader2.SetEdgePedigreeIdArrayName("graph edge")
-reader2.GenerateVertexPedigreeIdsOff();
-reader2.SetVertexPedigreeIdArrayName("id");
+reader2.GenerateVertexPedigreeIdsOff()
+reader2.SetVertexPedigreeIdArrayName("id")
 
 # Setup the view parameters for displaying the graph
-
 view = vtkTreeRingView()
 view.SetTreeFromInputConnection(reader2.GetOutputPort())
 view.SetGraphFromInputConnection(reader1.GetOutputPort())
@@ -450,14 +448,15 @@ view.SetColorEdges(True)
 view.SetAreaLabelArrayName("id")
 view.SetAreaLabelVisibility(True)
 view.SetShrinkPercentage(0.02)
-view.SetBundlingStrength(.8)
+view.SetBundlingStrength(0.8)
 
-# Apply a theme to the views theme = vtkViewTheme.CreateMellowTheme()
-
+# Apply a theme to the view
+theme = vtkViewTheme.CreateMellowTheme()
 view.ApplyViewTheme(theme)
 
-rw = versionUtil.SetupView(view)
-versionUtil.ShowView(view)
+view.ResetCamera()
+view.Render()
+view.GetInteractor().Start()
 ```
 
 These are the render view subclasses currently implemented in VTK: 
@@ -470,49 +469,56 @@ These are the render view subclasses currently implemented in VTK:
 
 ### Selections in Views
 
-Selections are an important component of the VTK view architecture. Refer to “Interaction, Widgets and Selections” on page255 for a general description of selections in VTK. Most views have the ability to interactively create a selection (e.g. through mouse clicks or rubber-band selections), and also have the capacity to display the current selection through highlighting or some other mechanism.
+Selections are an important component of the VTK view architecture. Most views have the ability to interactively create a selection (e.g. through mouse clicks or rubber-band selections), and also have the capacity to display the current selection through highlighting or some other mechanism.
 
 ![Figure 8-8](images/Figure_8-8.png)
 
 *Figure 8–8 A simple application showing linked selection between a graph layout view and a Qt table view.*
 
-Views automatically generate selections of the corresponding type when the user performs a selection interaction (e.g. by clicking or dragging a selection box). Selections may be shared across views simply by setting a common vtkSelectionLink object on multiple representations. (In VTK versions after 5.4, vtkSelectionLink has been replaced with the more flexible vtkAnnotationLink. This works in the same way as vtkSelectionLink, but can share annotations on the data between views in addition to a shared selection.)
+Views automatically generate selections of the corresponding type when the user performs a selection interaction (e.g. by clicking or dragging a selection box). Selections may be shared across views simply by setting a common vtkAnnotationLink object on multiple representations. vtkAnnotationLink can share annotations on the data between views in addition to a shared selection.
 
 The following example generates a graph view and table view with linked selection. The table view displays the vertex data of the graph in a Qt widget. Similarly vtkQtTreeView can display the contents of a vtkTree in a Qt tree widget. When rows are selected in the table view, the graph view updates to reflect this, and vice versa.
 
 ```cpp
+#include <vtkDataObjectToTable.h>
+#include <vtkGraphLayoutView.h>
+#include <vtkNew.h>
+#include <vtkQtTableView.h>
+#include <vtkRandomGraphSource.h>
+#include <vtkViewUpdater.h>
+
 QApplication app(argc, argv);
+
 // Create the graph source and table conversion
-vtkRandomGraphSource* src = vtkRandomGraphSource::New();
-vtkDataObjectToTable* o2t = vtkDataObjectToTable::New();
+vtkNew<vtkRandomGraphSource> src;
+vtkNew<vtkDataObjectToTable> o2t;
 o2t->SetInputConnection(src->GetOutputPort());
 o2t->SetFieldType(vtkDataObjectToTable::VERTEX_DATA);
+
 // Create Qt table view and add a representation
-vtkQtTableView* tv = vtkQtTableView::New();
-vtkDataRepresentation* tr;
-tr = tv->AddRepresentationFromInputConnection(o2t->GetOutputPort());
+vtkNew<vtkQtTableView> tv;
+vtkDataRepresentation* tr =
+    tv->AddRepresentationFromInputConnection(o2t->GetOutputPort());
+
 // Create graph layout view
-vtkGraphLayoutView* gv = vtkGraphLayoutView::New();
+vtkNew<vtkGraphLayoutView> gv;
 gv->SetVertexLabelArrayName("vertex id");
 gv->VertexLabelVisibilityOn();
 gv->SetLayoutStrategyToSimple2D();
+
 // Add representation to graph view
-vtkDataRepresentation* gr;
-gr = gv->AddRepresentationFromInputConnection(src->GetOutputPort());
-gr->SetSelectionLink(tr->GetSelectionLink());
+vtkDataRepresentation* gr =
+    gv->AddRepresentationFromInputConnection(src->GetOutputPort());
+gr->SetAnnotationLink(tr->GetAnnotationLink());
+
 // Ensure both views update when selection changes
-vtkViewUpdater* vu = vtkViewUpdater::New();
+vtkNew<vtkViewUpdater> vu;
 vu->AddView(gv);
 vu->AddView(tv);
-// Start application
 
-#if VTK_5_4_OR_EARLIER
-vtkRenderWindow* win = vtkRenderWindow::New();
-gv->SetupRenderWindow(win);
-#endif
+// Start application
 tv->GetItemView()->show();
 app.exec();
-}
 ```
 
 ## 8.4 Graph Algorithms
@@ -526,36 +532,36 @@ One of these libraries is the Boost Graph Library (BGL) which provides a generic
 The usage of any graph algorithm follows the VTK pipeline model. The code example shown in Listing <BFS> demonstrates the usage of a graph algorithm. The code includes the header file of the algorithm, creates the VTK filter for the algorithm (in this case vtkBoostBreadthFirstSearch) and puts the algorithm in the pipeline. After the pipeline is updated, the results of that algorithm are available as attributes on the nodes and/or edges of the graph. This example simply labels each vertex with its distance from the starting vertex (labeled “0”).
 
 ```cpp
-#include "vtkBoostBreadthFirstSearch.h"
-#include "vtkGraphLayoutView.h"
-#include "vtkRandomGraphSource.h"
-#include "vtkRenderWindow.h"
-#include "vtkRenderWindowInteractor.h"
+#include <vtkBoostBreadthFirstSearch.h>
+#include <vtkGraphLayoutView.h>
+#include <vtkNew.h>
+#include <vtkRandomGraphSource.h>
+#include <vtkRenderWindowInteractor.h>
+
 int main(int argc, char* argv[])
 {
-// Create a random graph
-vtkRandomGraphSource* source = vtkRandomGraphSource::New();
-// Create BGL algorithm and put it in the pipeline
-vtkBoostBreadthFirstSearch* bfs = vtkBoostBreadthFirstSearch::New();
-bfs->SetInputConnection(source->GetOutputPort());
-// Create a view and add the BFS output
-vtkGraphLayoutView* view = vtkGraphLayoutView::New();
-view->AddRepresentationFromInputConnection(bfs->GetOutputPort());
-// Color vertices based on BFS search
-view->SetVertexColorArrayName("BFS");
-view->ColorVerticesOn();
-view->SetVertexLabelArrayName("BFS");
-view->VertexLabelVisibilityOn();
-// See the start of the Information Visualization chapter
-// for information on how this has changed after VTK 5.4.
-vtkRenderWindow* window = vtkRenderWindow::New();
-view->SetupRenderWindow(window);
-window->GetInteractor()->Start();
-source->Delete();
-bfs->Delete();
-view->Delete();
-window->Delete();
-return 0;
+    // Create a random graph
+    vtkNew<vtkRandomGraphSource> source;
+
+    // Create BGL algorithm and put it in the pipeline
+    vtkNew<vtkBoostBreadthFirstSearch> bfs;
+    bfs->SetInputConnection(source->GetOutputPort());
+
+    // Create a view and add the BFS output
+    vtkNew<vtkGraphLayoutView> view;
+    view->AddRepresentationFromInputConnection(bfs->GetOutputPort());
+
+    // Color vertices based on BFS search
+    view->SetVertexColorArrayName("BFS");
+    view->ColorVerticesOn();
+    view->SetVertexLabelArrayName("BFS");
+    view->VertexLabelVisibilityOn();
+
+    view->ResetCamera();
+    view->Render();
+    view->GetInteractor()->Start();
+
+    return 0;
 }
 ```
 
@@ -563,21 +569,28 @@ return 0;
 
 *Figure 8–9 The result of computing the breadth-first distance from a starting vertex (labeled “0”)*
 
-As pipeline components the graph algorithms can also be combined in unique ways. For instance the following python snippet (extracted from VTK\Examples\Infovis\Python\boost_mst.py) shows two graph algorithms working together.
+As pipeline components the graph algorithms can also be combined in unique ways. For instance the following Python snippet shows two graph algorithms working together.
 
 ```python
-# Create a random graph
-randomGraph = vtkRandomGraphSource() 
+from vtkmodules.vtkInfovisBoostGraphAlgorithms import (
+    vtkBoostBrandesCentrality,
+    vtkBoostKruskalMinimumSpanningTree,
+)
+from vtkmodules.vtkInfovisCore import vtkRandomGraphSource
+from vtkmodules.vtkViewsInfovis import vtkGraphLayoutView
 
-# Connect to the centrality filter.
-centrality = vtkBoostBrandesCentrality ()
-centrality.SetInputConnection(randomGraph.GetOutputPort())
+# Create a random graph
+random_graph = vtkRandomGraphSource()
+
+# Connect to the centrality filter
+centrality = vtkBoostBrandesCentrality()
+centrality.SetInputConnection(random_graph.GetOutputPort())
 
 # Find the minimal spanning tree
-mstTreeSelection = vtkBoostKruskalMinimumSpanningTree()
-mstTreeSelection.SetInputConnection(centrality.GetOutputPort())
-mstTreeSelection.SetEdgeWeightArrayName("centrality")
-mstTreeSelection.NegateEdgeWeightsOn()
+mst_tree_selection = vtkBoostKruskalMinimumSpanningTree()
+mst_tree_selection.SetInputConnection(centrality.GetOutputPort())
+mst_tree_selection.SetEdgeWeightArrayName("centrality")
+mst_tree_selection.NegateEdgeWeightsOn()
 
 # Create a graph layout view
 view = vtkGraphLayoutView()
@@ -599,12 +612,12 @@ Here both vertex and edge centrality are computed by the vtkBoostBrandesCentrali
 
 *Figure 8–10 Graph showing a minimum spanning tree (purple) based on centrality computed on the graph edges*
 
-Many of these algorithms are discussed in this section are demonstrated in the python examples under VTK\Examples\Infovis\Python. 
+Many of these algorithms are demonstrated in the VTK source tree under the Infovis examples directory.
 
 **vtkBoostBreadthFirstSearch.** This filter implements a vtkGraphAlgorithm that computes the BFS of a vtkGraph which is rooted at some starting node. The starting node can be either a selection or can be specified via its index into the graph. The time complexity of the Boost BFS implementation is O(E+V).
 
 SetOriginSelection(vtkSelection* s)
-Sets the origin node for this search through a selection cointaining a node in the graph.
+Sets the origin node for this search through a selection containing a node in the graph.
 
 SetOriginSelectionConnection(vtkAlgorithmOutput *)
 Sets the origin node using the output from another VTK filter.
@@ -693,44 +706,53 @@ If on, edge weights are negated. See note in description, this filter will throw
 
 ### Creating Graph Algorithms
 
-In practice anyone can add a graph algorithm to VTK. There are several approaches a developer can take. The first and easiest for a python programmer is to use the vtkProgrammableFilter. The python code in Figure 8–11 demonstrates the use of the programmable python filter to compute vertex degree (taken from VTK\Examples\Infovis\Python\vertex_degree_programmable.py).
+In practice anyone can add a graph algorithm to VTK. There are several approaches a developer can take. The first and easiest for a Python programmer is to use the vtkProgrammableFilter. The Python code in Figure 8–11 demonstrates the use of the programmable filter to compute vertex degree.
 
 ![Figure 8-11](images/Figure_8-11.png)
 
 *Figure 8–11 A graph labeled by the computed degree of each vertex*
 
 ```python
-def computeVertexDegree():
+from vtkmodules.vtkCommonCore import vtkIntArray
+from vtkmodules.vtkFiltersProgrammable import vtkProgrammableFilter
+from vtkmodules.vtkInfovisCore import vtkRandomGraphSource
+from vtkmodules.vtkViewsInfovis import vtkGraphLayoutView
 
-input = vertexDegree.GetInput()
-output = vertexDegree.GetOutput()
-output.ShallowCopy(input)
 
-# Create output array
-vertexArray = vtkIntArray()
-vertexArray.SetName("VertexDegree")
-vertexArray.SetNumberOfTuples(output.GetNumberOfVertices())
+def compute_vertex_degree():
+    input_graph = vertex_degree.GetInput()
+    output_graph = vertex_degree.GetOutput()
+    output_graph.ShallowCopy(input_graph)
 
-# Loop through all the vertices setting the degree for the new # attribute array
-for i in range(output.GetNumberOfVertices()):
-vertexArray.SetValue(i, output.GetDegree(i))
+    # Create output array
+    vertex_array = vtkIntArray()
+    vertex_array.SetName("VertexDegree")
+    vertex_array.SetNumberOfTuples(output_graph.GetNumberOfVertices())
 
-# Add the new attribute array to the output graph
-output.GetEdgeData().AddArray(vertexArray)
-vertexDegree = vtkProgrammableFilter()
-vertexDegree.SetExecuteMethod(computeVertexDegree)
+    # Loop through all the vertices setting the degree
+    for i in range(output_graph.GetNumberOfVertices()):
+        vertex_array.SetValue(i, output_graph.GetDegree(i))
+
+    # Add the new attribute array to the output graph
+    output_graph.GetVertexData().AddArray(vertex_array)
+
+
+vertex_degree = vtkProgrammableFilter()
+vertex_degree.SetExecuteMethod(compute_vertex_degree)
+
 # VTK Pipeline
-randomGraph = vtkRandomGraphSource()
-vertexDegree.AddInputConnection(randomGraph.GetOutputPort())
+random_graph = vtkRandomGraphSource()
+vertex_degree.AddInputConnection(random_graph.GetOutputPort())
+
 view = vtkGraphLayoutView()
-view.AddRepresentationFromInputConnection(vertexDegree.GetOutputPort())
+view.AddRepresentationFromInputConnection(vertex_degree.GetOutputPort())
 view.SetVertexLabelArrayName("VertexDegree")
 view.SetVertexLabelVisibility(True)
 ```
 
-Another straightforward approach is to create a regular VTK C++ filter as a graph algorithm. The easiest filter to use as a reference would be vtkVertexDegree (VTK\Infovis\vtkVertexDegree.cxx). The C++ code in vtkVertexDegree.cxx looks remarkably similar to the python example above and contains the same functionality. The documentation for vtkGraph and the API for the various ways to access the data structure will also be helpful in the creation of your new filter.
+Another straightforward approach is to create a regular VTK C++ filter as a graph algorithm. The easiest filter to use as a reference would be vtkVertexDegree. The C++ code in vtkVertexDegree looks remarkably similar to the Python example above and contains the same functionality. The documentation for vtkGraph and the API for the various ways to access the data structure will also be helpful in the creation of your new filter.
 
-Perhaps the most interesting (and advanced) way to create a new graph algorithm in VTK is to contribute an algorithm to the Boost Graph Library and then 'wrap' that algorithm into a VTK class. A good reference is the vtkBoostBreadthFirstSearch filter (VTK\Infovis\vtkBoostBreadthFirstSearch.cxx) and the vtkBoostGraphAdapter.h  file. Detailed documentation on the Boost Graph Library can be found at http://www.boost.org/doc/ as well as in the book The Boost Graph Library: User Guide and Reference Manual. Although significantly more work, this approach benefits both VTK users and the members of the Boost community as well.
+Perhaps the most interesting (and advanced) way to create a new graph algorithm in VTK is to contribute an algorithm to the Boost Graph Library and then 'wrap' that algorithm into a VTK class. A good reference is the vtkBoostBreadthFirstSearch filter and the vtkBoostGraphAdapter.h file. Detailed documentation on the Boost Graph Library can be found at http://www.boost.org/doc/ as well as in the book *The Boost Graph Library: User Guide and Reference Manual*. Although significantly more work, this approach benefits both VTK users and the members of the Boost community as well.
 
 ### The Parallel Boost Graph Library
 
@@ -742,11 +764,11 @@ The MultiThreaded Graph Library (MTGL) targets shared memory platforms such as t
 
 ## 8.5 Databases
 
-As part of its information visualization capability, VTK 5.4 provides classes for access to SQL databases. Infovis datasets are often a good match for a relational database model. These often contain several smaller datasets linked by common attributes that fit well into tables. Also, a database allows an application to offload the task of managing large data by issuing queries for precisely the subset of interest.
+As part of its information visualization capability, VTK provides classes for access to SQL databases. Infovis datasets are often a good match for a relational database model. These often contain several smaller datasets linked by common attributes that fit well into tables. Also, a database allows an application to offload the task of managing large data by issuing queries for precisely the subset of interest.
 
 Low-level database access is separated into two abstract classes. The first, vtkSQLDatabase, is responsible for opening and closing databases, reporting whether features such as transactions, prepared statements and triggers are supported, and creating tables using schema objects. The second, vtkSQLQuery, is responsible for sending an SQL statement to the database for execution, checking for errors, and providing access to the results.
 
-The details of connecting to a particular database (MySQL, SQLite, Oracle, etc.) are implemented in concrete subclasses of vtkSQLDatabase. Similarly, the details of executing a query and retrieving results for a particular database are implemented in concrete subclasses of vtkSQLQuery. These concrete subclasses are respectively called “database drivers” and “query drivers”. VTK 5.4 includes drivers for the following databases: 
+The details of connecting to a particular database (MySQL, SQLite, Oracle, etc.) are implemented in concrete subclasses of vtkSQLDatabase. Similarly, the details of executing a query and retrieving results for a particular database are implemented in concrete subclasses of vtkSQLQuery. These concrete subclasses are respectively called “database drivers” and “query drivers”. VTK includes drivers for the following databases: 
 - SQLite 3.4.1 
 - MySQL 5.0 (and higher) 
 - PostgreSQL 7.1 (and higher) 
@@ -766,13 +788,12 @@ In order to connect to a database you must first obtain an instance of an approp
 The CreateFromURL() method will attempt to set all of the supplied parameters (username, server address, server port, database name) on the driver object. If you instantiate the driver directly you must set all of these parameters yourself. If the database requires a password you must supply it in the call to Open(). You may close a connection by calling Close() or by deleting the database driver. If the database connection could not be opened then Open() will return false. You may retrieve information about the reason for the failure using the GetLastErrorText() method. The C++ code for opening a database will generally look like the following:
 
 ```cpp
-vtkSQLDatabase *db = vtkSQLDatabase::CreateFromURL("sqlite://
-mydata.db");
+vtkSQLDatabase* db = vtkSQLDatabase::CreateFromURL("sqlite://mydata.db");
 bool status = db->Open("");
 if (!status)
 {
-cout << "Couldn't open database. Error message: "
-<< db->GetLastErrorText() << endl;
+    std::cout << "Couldn't open database. Error message: "
+              << db->GetLastErrorText() << std::endl;
 }
 ```
 
@@ -785,12 +806,13 @@ To actually execute a query you must use an instance of one of the query drivers
 ```cpp
 vtkSQLQuery* query = db->GetQueryInstance();
 
-const char *queryText = "SELECT name, age, weight "
-"FROM people WHERE age <= 20";
+const char* queryText = "SELECT name, age, weight "
+                        "FROM people WHERE age <= 20";
 query->SetQuery(queryText);
 if (!query->Execute())
 {
-cout << "Query failed. Error message: " << query->GetLastErrorText() << endl;
+    std::cout << "Query failed. Error message: "
+              << query->GetLastErrorText() << std::endl;
 }
 ```
 
@@ -809,28 +831,28 @@ The result data is read one row at a time. You must call vtkSQLQuery::NextRow() 
 ```cpp
 while (query->NextRow())
 {
-for (int field = 0; field < query->GetNumberOfFields(); field++)
-{
-vtkVariant v = query->DataValue(field);
-// Process it
-}
+    for (int field = 0; field < query->GetNumberOfFields(); field++)
+    {
+        vtkVariant v = query->DataValue(field);
+        // Process it
+    }
 }
 ```
 
 To retrieve an entire row at once, call vtkSQLQuery::NextRow(vtkVariantArray *) instead of NextRow(). The values for that row will be stored in the array you supply.
 
 ```cpp
-vtkVariantArray* va = vtkVariantArray::New();
+vtkNew<vtkVariantArray> va;
 while (query->NextRow(va))
 {
-// Process it
+    // Process it
 }
 ```
 
 When processing query results we often wish to store the entire result set in a vtkTable to be passed through the pipeline. The vtkRowQueryToTable filter does exactly this. Use it by obtaining and setting up a query driver, then passing the query to the filter as the argument to SetQuery(). The query will be executed when the filter is updated either manually (by calling Update()) or through a request from further down the pipeline.
 
 ```cpp
-vtkRowQueryToTable* reader = vtkRowQueryToTable::New();
+vtkNew<vtkRowQueryToTable> reader;
 reader->SetQuery(query);
 reader->Update();
 vtkTable* table = reader->GetOutput();
@@ -840,7 +862,7 @@ vtkTable* table = reader->GetOutput();
 
 Since vtkSQLQuery requires only that the query string be valid SQL it can be used for more operations than just reading from tables. For example, CREATE, UPDATE, INSERT, DROP and TRUNCATE (and others) are all available for use. The only requirement is that if the query returns any output aside from a status code it must be in row format. This excludes commands such as EXPLAIN that return unformatted text. 
 
-You may use the SQL INSERT command to write data back to the database. Since each row must be inserted with a separate INSERT statement this is likely to be slow for large amounts of data. Support for prepared statements and bound parameters in the next version of VTK will help eliminate this bottleneck. Meanwhile, if you need to write large datasets back to the database, consider using the database's native interface or bulk loader instead of the VTK access classes. The following example creates a table called PEOPLE and populates it. Error checking is omitted for brevity.
+You may use the SQL INSERT command to write data back to the database. Since each row must be inserted with a separate INSERT statement this is likely to be slow for large amounts of data. If you need to write large datasets back to the database, consider using the database's native interface or bulk loader instead of the VTK access classes. The following example creates a table called PEOPLE and populates it. Error checking is omitted for brevity.
 
 ```cpp
 vtkStdString createQuery("CREATE TABLE IF NOT EXISTS people "
@@ -873,54 +895,55 @@ Finally, AddTriggerToTable() allows you to add SQL statements that get executed 
 Once you have created a vtkSQLDatabaseSchema object and populated it using the functions above, you may call vtkSQLDatabase::EffectSchema() to translate the schema into a set of tables. The following is an example of how to use the vtkSQLDatabaseSchema class from Python.
 
 ```python
-from vtk import *
+from vtkmodules.vtkIOSQL import vtkSQLDatabaseSchema, vtkSQLiteDatabase
+
 schema = vtkSQLDatabaseSchema()
-schema.SetName('TestSchema')
-url = 'psql://vtk@localhost/vtk_test'
-## Values of enums
+schema.SetName("TestSchema")
+url = "psql://vtk@localhost/vtk_test"
+
+# Values of enums
 VTK_SQL_SCHEMA_SERIAL = 0
 VTK_SQL_SCHEMA_BIGINT = 3
 VTK_SQL_SCHEMA_PRIMARY_KEY = 2
 
-btab = schema.AddTable('btable')
-col0 = schema.AddColumnToTable(btab, VTK_SQL_SCHEMA_SERIAL, 'tablekey', 0, '')
-col1 = schema.AddColumnToTable(btab, VTK_SQL_SCHEMA_BIGINT, 'somevalue', 12, 'DEFAULT 0')
-idx0 = schema.AddIndexToTable(btab, VTK_SQL_SCHEMA_PRIMARY_KEY, '') 
+btab = schema.AddTable("btable")
+col0 = schema.AddColumnToTable(btab, VTK_SQL_SCHEMA_SERIAL, "tablekey", 0, "")
+col1 = schema.AddColumnToTable(btab, VTK_SQL_SCHEMA_BIGINT, "somevalue", 12, "DEFAULT 0")
+idx0 = schema.AddIndexToTable(btab, VTK_SQL_SCHEMA_PRIMARY_KEY, "")
 i0c0 = schema.AddColumnToIndex(btab, idx0, col0)
 
-# Create a dummy database instance # so we can call CreateFromURL,
-# then replace instance with real thing
-
+# Create the database from a URL
 db = vtkSQLiteDatabase()
-db = db.CreateFromURL(url);
-# Try opening the database without a password
-if not db.Open(''):
-# Ask the user for a password and try it.
-from getpass import getpass
-db.Open(getpass('Password for %s' % url))
-if db.IsOpen():
-# If we were able to open the database, effect the schema
+db = db.CreateFromURL(url)
 
-db.EffectSchema(schema, True);
+# Try opening the database without a password
+if not db.Open(""):
+    # Ask the user for a password and try it
+    from getpass import getpass
+    db.Open(getpass(f"Password for {url}"))
+
+if db.IsOpen():
+    # If we were able to open the database, effect the schema
+    db.EffectSchema(schema, True)
 ```
 
 A convenience routine, named AddTableMultipleArguments, is available in C++ (but not wrapped languages) to aid in the declaration of a static schema. It uses the cstdarg package so that you may pass an arbitrary number of arguments specifying many table columns, indices, and triggers. The first argument to the function is the name of a table to create. It is followed by any number of tokens, each of which may require additional arguments after it and before the next token. The last argument must be the special vtkSQLDatabaseSchema::END_TABLE_TOKEN. Tokens exist for adding columns, indices, and triggers. Use of AddTableMultipleArguments is shown in Listing 2, which is the example from Listing 1 converted into C++ to illustrate AddTableMultipleArguments.
 
 ```cpp
-vtkSQLDatabaseSchema* schema = vtkSQLDatabaseSchema::New();
+vtkNew<vtkSQLDatabaseSchema> schema;
 schema->SetName("TestSchema");
 
-tblHandle = schema->AddTableMultipleArguments("btable",
-vtkSQLDatabaseSchema::COLUMN_TOKEN,
-vtkSQLDatabaseSchema::SERIAL, "tablekey", 0, "", 
-vtkSQLDatabaseSchema::COLUMN_TOKEN,
-vtkSQLDatabaseSchema::BIGINT, "somevalue", 12, "DEFAULT 0", 
-vtkSQLDatabaseSchema::INDEX_TOKEN,
-vtkSQLDatabaseSchema::PRIMARY_KEY, "", 
-vtkSQLDatabaseSchema::INDEX_COLUMN_TOKEN, "tablekey", 
-vtkSQLDatabaseSchema::END_INDEX_TOKEN, 
-vtkSQLDatabaseSchema::END_TABLE_TOKEN
-);
+int tblHandle = schema->AddTableMultipleArguments("btable",
+    vtkSQLDatabaseSchema::COLUMN_TOKEN,
+    vtkSQLDatabaseSchema::SERIAL, "tablekey", 0, "",
+    vtkSQLDatabaseSchema::COLUMN_TOKEN,
+    vtkSQLDatabaseSchema::BIGINT, "somevalue", 12, "DEFAULT 0",
+    vtkSQLDatabaseSchema::INDEX_TOKEN,
+    vtkSQLDatabaseSchema::PRIMARY_KEY, "",
+    vtkSQLDatabaseSchema::INDEX_COLUMN_TOKEN, "tablekey",
+    vtkSQLDatabaseSchema::END_INDEX_TOKEN,
+    vtkSQLDatabaseSchema::END_TABLE_TOKEN);
+
 vtkSQLDatabase* db = vtkSQLDatabase::CreateFromURL(url);
 db->EffectSchema(schema);
 ```
@@ -1001,7 +1024,7 @@ These filters all accept multiple requests Ri, each of which is a set of ni vari
 - Derive: everything the multi-correlative filter provides, plus the ni eigenvalues and eigenvectors of the covariance matrix; 
 - Assess: perform a change of basis to the principal components (eigenvectors), optionally projecting to the first mi components, where mi <= ni is either some user-specified value or is determined by the fraction of maximal eigenvalues whose sum is above a user-specified threshold. This results in mi additional columns of data for each request Ri.
 
-**k-Means statistics (kMeans was added after VTK 5.4).**
+**k-Means statistics.**
 
 - Learn: calculate new cluster centers for data using initial cluster centers. When initial cluster centers are provided by the user using an additional input table, multiple sets of new cluster centers are computed. The output metadata is a multiblock dataset containing at a minimum one vtkTable with columns specifying the following for each run: the run ID, number of clusters, number of iterations required for convergence, RMS error associated with the cluster, the number of elements in the cluster, and the new cluster coordinates; 
 - Derive: calculates the global and local rankings amongst the sets of clusters computed in the learn phase. The global ranking is the determined by the error amongst all new cluster centers, while the local rankings are computed amongst clusters sets with the same number of clusters.
@@ -1010,39 +1033,31 @@ The total error is also reported;
 
 **Using statistics algorithms**
 
-It is fairly easy to use the statistics classes of VTK. For example, Listing 1 demonstrates how to calculate contingency statistics, on two pairs of column of an input set inData of type vtkTable, with no subsequent data assessment. It is assumed here the input data table has at least 3 columns.
+It is fairly easy to use the statistics classes of VTK. For example, the following code demonstrates how to calculate contingency statistics on two pairs of columns of an input set inData of type vtkTable, with no subsequent data assessment. It is assumed here the input data table has at least 3 columns.
 
 ```cpp
 // Assume the input dataset is passed to us
-// Also is assume that it has a least 3 columns
+// Also assume that it has at least 3 columns
 vtkTable* inData = static_cast<vtkTable*>(arg);
-// Create contingency statistics class
-vtkContingencyStatistics* cs = vtkContingencyStatistics::New();
-// Set input data port
-cs->SetInput(0, inData);
-// Select pairs of columns (0,1) and (0,2) in inData
-cs->AddColumnPair(inData->GetColumnName[0], inData-
->GetColumnName[1]);
-cs->AddColumnPair(inData->GetColumnName[0], inData-
->GetColumnName[2]);
-// Calculate statistics with Learn and Derive phases only
 
-#if VTK_5_4_OR_EARLIER
-cs->SetLearn(true);
-cs->SetDerive(true);
-cs->SetAssess(false);
-#else
+// Create contingency statistics class
+vtkNew<vtkContingencyStatistics> cs;
+// Set input data port
+cs->SetInputData(0, inData);
+// Select pairs of columns (0,1) and (0,2) in inData
+cs->AddColumnPair(inData->GetColumnName(0), inData->GetColumnName(1));
+cs->AddColumnPair(inData->GetColumnName(0), inData->GetColumnName(2));
+// Calculate statistics with Learn and Derive phases only
 cs->SetLearnOption(true);
 cs->SetDeriveOption(true);
 cs->SetAssessOption(false);
-#endif
 cs->Update();
 ```
 
-The previous code section’s requests for each pair of columns of interest are specified by calling AddColumnPair(), as is done for all bivariate algorithms. Univariate algorithms instead call AddColumn() a number of times to unambiguously specify a set of requests. However, multivariate filters have a slightly different usage pattern. In order to queue a request for multivariate statistics algorithms, SetColumnStatus() should be called to turn on columns of interest (and to turn off any previouslyselected columns that are no longer of interest). Once the desired set of columns has been specified, a call to RequestSelectedColumns() should be made. Consider the example from Table 1 where 2 requests are mentioned: {A,B,C} and {B,C,D}. The code snippet in Listing 2 shows how to queue these requests for a vtkPCAStatistics object.
+The previous code section’s requests for each pair of columns of interest are specified by calling AddColumnPair(), as is done for all bivariate algorithms. Univariate algorithms instead call AddColumn() a number of times to unambiguously specify a set of requests. However, multivariate filters have a slightly different usage pattern. In order to queue a request for multivariate statistics algorithms, SetColumnStatus() should be called to turn on columns of interest (and to turn off any previously selected columns that are no longer of interest). Once the desired set of columns has been specified, a call to RequestSelectedColumns() should be made. Consider the example from Table 1 where 2 requests are mentioned: {A,B,C} and {B,C,D}. The code snippet in Listing 2 shows how to queue these requests for a vtkPCAStatistics object.
 
 ```cpp
-vtkPCAStatistics* pps = vtkPCAStatistics::New();
+vtkNew<vtkPCAStatistics> ps;
 // Turn on columns of interest
 ps->SetColumnStatus("A", 1);
 ps->SetColumnStatus("B", 1);
@@ -1099,7 +1114,7 @@ Note, in each of these examples the data is likely to be more-or-less “sparse�
 
 To meet the preceding challenges, the vtkArray class and its derivatives provide the functionality to store and manipulate sparse and dense arrays of arbitrary dimension (Figure 8–17).
 
-Note first that vtkArray and its subclasses are entirely separate from the traditional VTK array types such as vtkDataArray, vtkIntArray, , vtkFloatArray, and other array types derived from vtkAbstractArray. In some future release we plan to unify these two hierarchies.
+Note first that vtkArray and its subclasses are entirely separate from the traditional VTK array types such as vtkDataArray, vtkIntArray, vtkFloatArray, and other array types derived from vtkAbstractArray.
 
 At the top of the N-Dimensional array hierarchy, vtkArray provides methods and functionality that are common to all arrays, regardless of the type of values stored or the type of storage used. Using vtkArray, you can: 
 - Create heterogeneous containers of arrays.
@@ -1109,7 +1124,7 @@ At the top of the N-Dimensional array hierarchy, vtkArray provides methods and f
 ![Figure 8-17](images/Figure_8-17.png)
 *Figure 8–17 VTK N-dimensional array classes*
 
-The vtkTypedArray<T> template class derives from vtkArray, and is used to provide stronglytyped access to the values stored in the array while ignoring the type of storage used. Using vtkTypedArray<T>, you can efficiently manipulate arrays that contain a specific type (int, double, string, etc) while ignoring how the array data is stored (dense, sparse, etc).
+The vtkTypedArray<T> template class derives from vtkArray, and is used to provide strongly-typed access to the values stored in the array while ignoring the type of storage used. Using vtkTypedArray<T>, you can efficiently manipulate arrays that contain a specific type (int, double, string, etc) while ignoring how the array data is stored (dense, sparse, etc).
 
 Finally, VTK currently provides two concrete derivatives of vtkTypedArray<T>, vtkDenseArray<T> and vtkSparseArray<T>, that implement specific storage strategies:
 
@@ -1129,18 +1144,17 @@ You create multi-dimensional arrays in VTK by instantiating the desired concrete
 
 ```cpp
 // Creating a dense vector (1D array) of strings:
-
-vtkDenseArray<vtkStdString>* vector =
-
-vtkDenseArray<vtkStdString>::New();
+vtkDenseArray<vtkStdString>* vector = vtkDenseArray<vtkStdString>::New();
 vector->Resize(10);
+
 // Creating a dense 10 x 20 matrix (2D array) of integers:
 vtkDenseArray<int>* matrix = vtkDenseArray<int>::New();
 matrix->Resize(10, 20);
+
 // Creating a sparse 10 x 20 x 30 x 40 tensor
 // (4D array) of floating-point values:
 vtkArrayExtents extents;
-Extents.SetDimensions(4);
+extents.SetDimensions(4);
 extents[0] = 10;
 extents[1] = 20;
 extents[2] = 30;
@@ -1153,7 +1167,7 @@ Note that the vtkArray::Resize() method has been overloaded so that you can easi
 
 ![Figure 8-19](images/Figure_8-19.png)
 
-*Figure 8–19 How vtkSparseArray<T> stores a sparse 3x3 matrix using coordiante storage.*
+*Figure 8–19 How vtkSparseArray<T> stores a sparse 3x3 matrix using coordinate storage.*
 
 After resizing, the new arrays must be properly initialized. This process will vary depending on the array storage type - for example, the contents of vtkDenseArray<T> will be undefined after resizing, so vtkDenseArray<T> provides a Fill() method that can be used to overwrite the entire array with a single value:
 
@@ -1196,15 +1210,13 @@ int matrix_value = matrix->GetValue(4, 3);
 double tensor_value = tensor->GetValue(coordinates);
 ```
 
-SetValue() and GetValue() are strongly-typed methods provided by vtkTypedArray<T>, and assume that you know the type of data stored in the array in advance, either because you created the array yourself, or you used SafeDownCast() to cast from vtkArray to vtkTypedArray<T> for some specific T. For situations where you are working with an array of unknown type, there are SetVariantValue() /
-
-GetVariantValue() methods provided by vtkArray that allow you to conveniently set and get values from any array, regardless of type, albeit with the overhead of conversion to-and-from variant values:
+SetValue() and GetValue() are strongly-typed methods provided by vtkTypedArray<T>, and assume that you know the type of data stored in the array in advance, either because you created the array yourself, or you used SafeDownCast() to cast from vtkArray to vtkTypedArray<T> for some specific T. For situations where you are working with an array of unknown type, there are SetVariantValue() / GetVariantValue() methods provided by vtkArray that allow you to conveniently set and get values from any array, regardless of type, albeit with the overhead of conversion to-and-from variant values:
 
 ```cpp
 // Print value [8] from any one-dimensional array
 // to the console, regardless of type:
-vtkArray* generic_array = /* Defined elsewhere */
-cout << generic_array->GetVariantValue(8).ToString() << endl;
+vtkArray* generic_array = /* Defined elsewhere */;
+std::cout << generic_array->GetVariantValue(8).ToString() << std::endl;
 ```
 
 In this example, GetVariantValue() returns a vtkVariant object, and the vtkVariant::ToString() method converts the underlying value to a string, regardless of the original type. Similarly, you could use variants to shuffle data within an array without having to know the type of data it contains:
@@ -1220,16 +1232,17 @@ generic_array->SetVariantValue(7, temp);
 
 Although SetValue() and GetValue() provide an easily-understood, uniform interface to all arrays regardless of their storage type, the convenience of this approach carries an abstraction penalty. In the material that follows, we will cover some important techniques for improving the performance of array-related code.
 
-### Populating
+### Populating Dense Arrays
 
-Dense Arrays You will often need to manipulate the contents of vtkDenseArray<T> as a simple block of memory, either for I/O operations or for interoperability with other libraries. For these situations, vtkDenseArray<T> provides the GetStorage() method, which returns a pointer to the memory block that stores the array contents. You could use this pointer to write the (binary) contents of an array to a file as a single contiguous block: // Write the contents of a dense int array as binary data to a stream
+You will often need to manipulate the contents of vtkDenseArray<T> as a simple block of memory, either for I/O operations or for interoperability with other libraries. For these situations, vtkDenseArray<T> provides the GetStorage() method, which returns a pointer to the memory block that stores the array contents. You could use this pointer to write the (binary) contents of an array to a file as a single contiguous block:
 
 ```cpp
+// Write the contents of a dense int array as binary data to a stream
 void WriteDenseArray(vtkDenseArray<int>* array, ostream& stream)
 {
-stream.write(
-reinterpret_cast<char*>(array->GetStorage()),
-array->GetSize() * sizeof(int));
+    stream.write(
+        reinterpret_cast<char*>(array->GetStorage()),
+        array->GetSize() * sizeof(int));
 }
 ```
 
@@ -1237,19 +1250,18 @@ Alternately, you could pass the memory block to a library that performs dense ar
 
 ### Populating Sparse Arrays
 
-Recall that vtkSparseArray<T> stores values internally using a list of non-null values with their corresponding coordinates. This means that whenever SetValue() is called, vtkSparseArray<T> must
- first determine whether an existing value at those coordinates already exists. If it does, the old value is replaced with the new value; otherwise, the new value and its coordinates are appended to the end of the list. This linear search for existing values makes SetValue() an expensive operation for sparse arrays, compared to a constant-time operation on dense arrays. Used naively, SetValue() makes the creation of sparse arrays unacceptably slow.
- 
- Fortunately, vtkSparseArray<T> provides the AddValue() method, which appends values to the internal list without performing a search for existing values, and executes in amortized constant time. This provides excellent performance, but means that the caller is responsible to avoid calling AddValue() more than once with the same set of coordinates. In practice, this means that AddValue() should only be used on an array when you are populating it from scratch (as you would do if you were implementing a pipeline source that creates new sparse arrays). Never call AddValue() on an array with unknown contents (such as the input to a filter), since you run the risk of adding values with duplicate coordinates to the array's internal list (which is not allowed). The following code demonstrates using AddValue() to efficiently create a 10000 x 10000 diagonal matrix:
+Recall that vtkSparseArray<T> stores values internally using a list of non-null values with their corresponding coordinates. This means that whenever SetValue() is called, vtkSparseArray<T> must first determine whether an existing value at those coordinates already exists. If it does, the old value is replaced with the new value; otherwise, the new value and its coordinates are appended to the end of the list. This linear search for existing values makes SetValue() an expensive operation for sparse arrays, compared to a constant-time operation on dense arrays. Used naively, SetValue() makes the creation of sparse arrays unacceptably slow.
+
+Fortunately, vtkSparseArray<T> provides the AddValue() method, which appends values to the internal list without performing a search for existing values, and executes in amortized constant time. This provides excellent performance, but means that the caller is responsible to avoid calling AddValue() more than once with the same set of coordinates. In practice, this means that AddValue() should only be used on an array when you are populating it from scratch (as you would do if you were implementing a pipeline source that creates new sparse arrays). Never call AddValue() on an array with unknown contents (such as the input to a filter), since you run the risk of adding values with duplicate coordinates to the array's internal list (which is not allowed). The following code demonstrates using AddValue() to efficiently create a 10000 x 10000 diagonal matrix:
 
 ```cpp
 vtkSparseArray<double>* array = vtkSparseArray<double>::New();
 array->Resize(10000, 10000);
 array->SetNullValue(0.0);
 
-for(vtkIdType i = 0; i != 10000; ++i)
+for (vtkIdType i = 0; i != 10000; ++i)
 {
-array->AddValue(i, i, 1.0);
+    array->AddValue(i, i, 1.0);
 }
 ```
 
@@ -1258,14 +1270,16 @@ array->AddValue(i, i, 1.0);
 The preceding examples demonstrate how to populate arrays efficiently by avoiding the pitfalls of the SetValue() method. However, similar issues arise when accessing arrays using GetValue() - because vtkSparseArray stores non-null values in an unordered list, GetValue() must perform a linear search every time it is called, leading to unacceptably slow performance. To address this, VTK provides another technique - iteration - that makes it possible to read and write values to dense and sparse arrays in constant time, so long as certain conditions are met. Using iteration, we can: 
 - Eliminate the cost of linear lookups when getting / setting sparse array values. 
 - Visit only non-null values in sparse arrays. 
-- Implement filters using a consistent interface across dense and sparse arrays. 
-- Implement filters that operate on arbitrary-dimension data. The iteration interface provided for VTK multi-dimensional arrays works by exposing the values stored in an array as a single unordered list. Each value in the array is assigned an index in the halfopen range [0, N), where N is the number of non-null values stored in the array, and the vtkArray and vtkTypedArray<T> classes provide methods for accessing values 'by index': SetValueN(), GetValueN(), and GetCoordinatesN(). Using these methods, you can “visit” every value in an array, regardless of the type of array storage, and regardless of the number of dimensions in the array, using a single loop. For example, the following code efficiently increments every value in an array of integers by one, without any knowledge of its dimensions or whether the array is sparse or dense:
+- Implement filters using a consistent interface across dense and sparse arrays.
+- Implement filters that operate on arbitrary-dimension data.
+
+The iteration interface provided for VTK multi-dimensional arrays works by exposing the values stored in an array as a single unordered list. Each value in the array is assigned an index in the half-open range [0, N), where N is the number of non-null values stored in the array, and the vtkArray and vtkTypedArray<T> classes provide methods for accessing values 'by index': SetValueN(), GetValueN(), and GetCoordinatesN(). Using these methods, you can "visit" every value in an array, regardless of the type of array storage, and regardless of the number of dimensions in the array, using a single loop. For example, the following code efficiently increments every value in an array of integers by one, without any knowledge of its dimensions or whether the array is sparse or dense:
 
 ```cpp
-vtkTypedArray<int>* array = /* Defined elsewhere */
-for(vtkIdType n = 0; n != array->GetNonNullSize(); ++n)
+vtkTypedArray<int>* array = /* Defined elsewhere */;
+for (vtkIdType n = 0; n != array->GetNonNullSize(); ++n)
 {
-array->SetValueN(n, array->GetValueN(n) + 1);
+    array->SetValueN(n, array->GetValueN(n) + 1);
 }
 ```
 
@@ -1274,17 +1288,17 @@ Note that the order in which we “visit” the values in the array using GetVal
 Although you cannot control the order in which values are visited, you can use GetCoordinatesN() to discover “where you are at” as you iterate over the contents of any array, and this is usually sufficient for most algorithm implementations. For example, the following code computes the sum of the values in each row in a matrix, storing the results in a dense vector. Although we visit the matrix values in arbitrary order, we can use each value's coordinates as a constant time lookup to accumulate values in our result vector: 
 
 ```cpp
-vtkTypedArray<double>* matrix = /* Defined elsewhere */
+vtkTypedArray<double>* matrix = /* Defined elsewhere */;
 vtkIdType row_count = matrix->GetExtents()[0];
 vtkTypedArray<double>* vector = vtkDenseArray<double>::New();
 vector->Resize(row_count);
 vector->Fill(0.0);
-for(vtkIdType n = 0; n != matrix->GetNonNullSize(); ++n)
+for (vtkIdType n = 0; n != matrix->GetNonNullSize(); ++n)
 {
-vtkArrayCoordinates coordinates;
-matrix->GetCoordinatesN(n, coordinates);
-vtkIdType row = coordinates[0];
-vector->SetValue(row, vector->GetValue(row) + matrix->GetValueN(n));
+    vtkArrayCoordinates coordinates;
+    matrix->GetCoordinatesN(n, coordinates);
+    vtkIdType row = coordinates[0];
+    vector->SetValue(row, vector->GetValue(row) + matrix->GetValueN(n));
 }
 ```
 
@@ -1296,7 +1310,7 @@ Now that we can create and manipulate multi-dimension arrays, it's time to move 
 
 **Array Sources**
 
-- vtkDiagonalMatrixSource - Produces sparse or dense matrices of arbitrary size, with userassigned values for the diagonal, superdiagonal, and subdiagonal.
+- vtkDiagonalMatrixSource - Produces sparse or dense matrices of arbitrary size, with user-assigned values for the diagonal, superdiagonal, and subdiagonal.
 
 - vtkBoostRandomSparseArraySource - Produces sparse matrices with arbitrary size and number of dimensions. Provides separate parameters to control generation of random values and random sparse patterns. 
 - vtkTableToSparseArray - Converts a vtkTable containing coordinates and values into a sparse array of arbitrary dimensions.
@@ -1305,8 +1319,7 @@ Now that we can create and manipulate multi-dimension arrays, it's time to move 
 
 - vtkAdjacencyMatrixToEdgeTable - Converts a dense matrix into a vtkTable suitable for use with vtkTableToGraph. Dimension labels in the input matrix are mapped to column names in the output table. 
 - vtkArrayVectorNorm - Computes an L-norm for each column-vector in a sparse double matrix. 
-- vtkCosineSimilarity - Treats each row or column in a matrix as a vector, and computes the dotproduct similarity between each pair of vectors, producing a vtkTable suitable for use with vtkTableToGraph. Note: In VTK versions after 5.4, vtkCosineSimilarity has been renamed vtkDotProductSimilarity, to better describe its functionality 
-- vtkDotProductSimilarity -Treats each row or column in a matrix as a vector, and computes the dot-product similarity between each pair of vectors, producing a vtkTable suitable for use with vtkTableToGraph. 
+- vtkDotProductSimilarity - Treats each row or column in a matrix as a vector, and computes the dot-product similarity between each pair of vectors, producing a vtkTable suitable for use with vtkTableToGraph.
 - vtkBoostLogWeighting - Replaces each value p in an array with the natural logarithm of p+1. Good example of a filter that works with any array, containing any number of dimensions. 
 - vtkMatricizeArray - Converts sparse double arrays of arbitrary dimension to sparse matrices. For example, an i x j x k tensor can be converted into an i x jk, j x ik, or ij x k matrix. 
 - vtkNormalizeMatrixVectors - Normalizes either row vectors or column vectors in a matrix. Good example of a filter that works efficiently with both sparse and dense input matrices. Good example of a filter that works with either row or column vectors. 
