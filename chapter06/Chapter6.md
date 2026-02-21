@@ -21,73 +21,76 @@ In this first example we will assume that we have an array of unsigned character
 The first thing we need to do is create an array of unsigned chars to store the data. We use the SetArray() method to specify the pointer to the data and its size, with the final argument indicating that VTK should not free this memory.
 
 ```cpp
-vtkUnsignedCharArray *array = vtkUnsignedCharArray::New();
-array->SetArray( data, size[0]*size[1]*size[2], 1);
+vtkNew<vtkUnsignedCharArray> array;
+array->SetArray(data, size[0] * size[1] * size[2], 1);
 ```
 
 The second step is to create the image data. We must take care that all values match—the scalar type of the image data must be unsigned char, and the dimensions of the image data must match the size of the data.
 
 ```cpp
-imageData = vtkImageData::New();
+vtkNew<vtkImageData> imageData;
 imageData->GetPointData()->SetScalars(array);
 imageData->SetDimensions(size);
-imageData->SetScalarType(VTK_UNSIGNED_CHAR);
-imageData->SetSpacing(1.0, 1.0, 1.0 );
-imageData->SetOrigin(0.0, 0.0, 0.0 );
+imageData->AllocateScalars(VTK_UNSIGNED_CHAR, 1);
+imageData->SetSpacing(1.0, 1.0, 1.0);
+imageData->SetOrigin(0.0, 0.0, 0.0);
 ```
 
-What’s important about image datasets is that because the geometry and topology are implicitly defined by the dimensions, origin, and spacing, the storage required to represent the dataset structure is tiny. Also, computation on the structure is fast because of its regular arrangement. What does require storage is the attribute data that goes along with the dataset.
+What's important about image datasets is that because the geometry and topology are implicitly defined by the dimensions, origin, and spacing, the storage required to represent the dataset structure is tiny. Also, computation on the structure is fast because of its regular arrangement. What does require storage is the attribute data that goes along with the dataset.
 
 In this next example, we will use C++ to create the image data. Instead of manually creating the data array and associating it with the image data, we will have the vtkImageData object create the scalar data for us. This eliminates the possibility of mismatching the size of the scalars with the dimensions of the image data.
 
 ```cpp
 // Create the image data
-vtkImageData *id = vtkImageData::New();
-id->SetDimensions(10,25,100);
-id->SetScalarTypeToUnsignedShort();
-id->SetNumberOfScalarComponents(1);
-id->AllocateScalars();
+vtkNew<vtkImageData> id;
+id->SetDimensions(10, 25, 100);
+id->AllocateScalars(VTK_UNSIGNED_SHORT, 1);
 // Fill in scalar values
-unsigned short *ptr = (unsigned short *) id->GetScalarPointer();
-for (int i=0; i<10*25*100; i++)
+unsigned short *ptr = (unsigned short *)id->GetScalarPointer();
+for (int i = 0; i < 10 * 25 * 100; i++)
 {
     *ptr++ = i;
 }
 ```
 
-In this example, the convenience method AllocateScalars() is used to allocate storage for the image data. Notice that this call is made after the scalar type and number of scalar components have been set (up to four scalar components can be set). Then the method GetScalarPointer(), which returns a void*, is invoked and the result is cast to unsigned short. We can do this knowing that the type is unsigned short because we specified this earlier. Imaging filters in VTK work on images of any scalar type. Their RequestData() methods query the scalar type and then switch on the type to a templated function in their implementation. VTK has by design chosen to avoid exposing the scalar type as a template parameter, in its public interface. This makes it easy to provide an interface to wrapped languages, such as Tcl, Java and Python which lack templates.
+In this example, the convenience method AllocateScalars() is used to allocate storage for the image data. Notice that the scalar type and number of scalar components are passed directly to AllocateScalars(). Then the method GetScalarPointer(), which returns a void*, is invoked and the result is cast to unsigned short. We can do this knowing that the type is unsigned short because we specified this earlier. Imaging filters in VTK work on images of any scalar type. Their RequestData() methods query the scalar type and then switch on the type to a templated function in their implementation. VTK has by design chosen to avoid exposing the scalar type as a template parameter, in its public interface. This makes it easy to provide an interface to wrapped languages, such as Java and Python which lack templates.
 
 ## 6.2 Subsampling Image Data
 
-As we saw in “Extract Subset of Cells” on page103, extracting parts of a dataset is often desirable. The filter vtkExtractVOI extracts pieces of the input image dataset. The filter can also subsample the data, although vtkImageReslice (covered later) provides more flexibility with resampling data. The output of the filter is also of type vtkImageData.
+As we saw in Section 5.1 ("Extract Subset of Cells"), extracting parts of a dataset is often desirable. The filter vtkExtractVOI extracts pieces of the input image dataset. The filter can also subsample the data, although vtkImageReslice (covered later) provides more flexibility with resampling data. The output of the filter is also of type vtkImageData.
 
 There are actually two similar filters that perform this clipping functionality in VTK: vtkExtractVOI and vtkImageClip. The reason for two separate versions is historical—the imaging pipeline used to be separate from the graphics pipeline, with vtkImageClip working only on vtkImageData in the imaging pipeline and vtkExtractVOI working only on vtkStructuredPoints in the graphics pipeline. These distinctions are gone now, but there are still some differences between these filters. vtkExtractVOI will extract a subregion of the volume and produce a vtkImageData that contains exactly this information. In addition, vtkExtractVOI can be used to resample the volume within the VOI. On the other hand, vtkImageClip by default will pass the input data through to the output unchanged except for the extent information. A flag may be set on this filter to force it to produce the exact amount of data only, in which case the region will be copied into the output vtkImageData. The vtkImageClip filter cannot resample the volume.
 
-The following Tcl example (taken from VTK/Examples/ImageProcessing/Tcl/ Contours2D.tcl) demonstrates how to use vtkExtractVOI. It extracts a piece of the input volume, and then subsamples it. The output is passed to a vtkContourFilter. (You may want to try removing vtkExtractVOI and compare the results.)
+The following Python example demonstrates how to use vtkExtractVOI. It extracts a piece of the input volume, and then subsamples it. The output is passed to a vtkContourFilter. (You may want to try removing vtkExtractVOI and compare the results.)
 
-```tcl
-# Quardric definition
-vtkQuadric quadric
-quadric SetCoefficients .5 1 .2 0 .1 0 0 .2 0 0
-vtkSampleFunction sample
-sample SetSampleDimensions 30 30 30
-sample SetImplicitFunction quadric
-sample ComputeNormalsOff
-vtkExtractVOI extract
-extract SetInputConnection [sample GetOutputPort]
-extract SetVOI 0 29 0 29 15 15
-extract SetSampleRate 1 2 3
-vtkContourFilter contours
-contours SetInputConnection [extract GetOutputPort]
-contours GenerateValues 13 0.0 1.2
-vtkPolyDataMapper contMapper
-contMapper SetInputConnection [contours GetOutputPort]
-contMapper SetScalarRange 0.0 1.2
-vtkActor contActor
-contActor SetMapper contMapper
+```python
+# Quadric definition
+quadric = vtkQuadric()
+quadric.SetCoefficients(0.5, 1, 0.2, 0, 0.1, 0, 0, 0.2, 0, 0)
+
+sample = vtkSampleFunction()
+sample.SetSampleDimensions(30, 30, 30)
+sample.SetImplicitFunction(quadric)
+sample.ComputeNormalsOff()
+
+extract = vtkExtractVOI()
+extract.SetInputConnection(sample.GetOutputPort())
+extract.SetVOI(0, 29, 0, 29, 15, 15)
+extract.SetSampleRate(1, 2, 3)
+
+contours = vtkContourFilter()
+contours.SetInputConnection(extract.GetOutputPort())
+contours.GenerateValues(13, 0.0, 1.2)
+
+contour_mapper = vtkPolyDataMapper()
+contour_mapper.SetInputConnection(contours.GetOutputPort())
+contour_mapper.SetScalarRange(0.0, 1.2)
+
+contour_actor = vtkActor()
+contour_actor.SetMapper(contour_mapper)
 ```
 
-Note that this script extracts a plane from the original data by specifying the volume of interest (VOI) as (0,29,0,29,15,15) (i<sub>min</sub> ,i<sub>max</sub> , j<sub>min</sub> ,j<sub>max</sub> , k<sub>min</sub> ,k<sub>max</sub> ) and that the sample rate is set differently along min max min max min max each of the i-j-k topological axes. You could also extract a subvolume or even a line or point by modifying the VOI specification. (The volume of interest is specified using 0-offset values.)
+Note that this script extracts a plane from the original data by specifying the volume of interest (VOI) as (0,29,0,29,15,15) (i<sub>min</sub> ,i<sub>max</sub> , j<sub>min</sub> ,j<sub>max</sub> , k<sub>min</sub> ,k<sub>max</sub> ) and that the sample rate is set differently along each of the i-j-k topological axes. You could also extract a subvolume or even a line or point by modifying the VOI specification. (The volume of interest is specified using 0-offset values.)
 
 ## 6.3 Warp Based On Scalar Values
 
@@ -97,28 +100,32 @@ Note that this script extracts a plane from the original data by specifying the 
 
 One common use of image data is to store elevation values as an image. These images are frequently called range maps or elevation maps. The scalar value for each pixel in the image represents an elevation, or range value. A common task in visualization is to take such an image and warp it to produce an accurate 3D representation of the elevation or range data. Consider Figure 6–2 which shows an image that has been warped based on its scalar value. The left image shows the original image while the right view shows the image after warping to produce a 3D surface.
 
-The pipeline to perform this visualization is fairly simple, but there is an important concept to understand. The original data is an image which has implicit geometry and topology. Warping the image will result in a 3D surface where geometry is no longer implicit. To support this we first convert the image to a vtkPolyData representation using vtkImageDataGeometryFilter. Then we perform the warp and connect to a mapper. In the script below you’ll note that we also make use of vtkWindowLevelLookupTable to provide a greyscale lookup-table instead of the default red to blue lookup table.
+The pipeline to perform this visualization is fairly simple, but there is an important concept to understand. The original data is an image which has implicit geometry and topology. Warping the image will result in a 3D surface where geometry is no longer implicit. To support this we first convert the image to a vtkPolyData representation using vtkImageDataGeometryFilter. Then we perform the warp and connect to a mapper. In the script below you'll note that we also make use of vtkWindowLevelLookupTable to provide a greyscale lookup-table instead of the default red to blue lookup table.
 
-```tcl
-vtkImageReader reader
-reader SetDataByteOrderToLittleEndian
-reader SetDataExtent 0 63 0 63 40 40
-reader SetFilePrefix "$VTK_DATA_ROOT/Data/headsq/quarter"
-reader SetDataMask 0x7fff
-vtkImageDataGeometryFilter geometry
-geometry SetInputConnection [reader GetOutputPort]
-vtkWarpScalar warp
-warp SetInputConnection [geometry GetOutputPort]
-warp SetScaleFactor 0.005
-vtkWindowLevelLookupTable wl
-vtkPolyDataMapper mapper
-mapper SetInputConnection [warp GetOutputPort]
-mapper SetScalarRange 0 2000
-mapper ImmediateModeRenderingOff
+```python
+reader = vtkVolume16Reader()
+reader.SetDataDimensions(64, 64)
+reader.SetDataByteOrderToLittleEndian()
+reader.SetImageRange(40, 40)
+reader.SetFilePrefix(os.path.join(data_dir, "headsq", "quarter"))
+reader.SetDataMask(0x7FFF)
 
-mapper SetLookupTable wl
-vtkActor actor
-actor SetMapper mapper
+geometry = vtkImageDataGeometryFilter()
+geometry.SetInputConnection(reader.GetOutputPort())
+
+warp = vtkWarpScalar()
+warp.SetInputConnection(geometry.GetOutputPort())
+warp.SetScaleFactor(0.005)
+
+wl_lut = vtkWindowLevelLookupTable()
+
+mapper = vtkPolyDataMapper()
+mapper.SetInputConnection(warp.GetOutputPort())
+mapper.SetScalarRange(0, 2000)
+mapper.SetLookupTable(wl_lut)
+
+actor = vtkActor()
+actor.SetMapper(mapper)
 ```
 
 This example is often combined with other techniques. If you want to warp the image with its scalar value and then color it with a different scalar field you would use the vtkMergeFilter. Another common operation is to reduce the number of polygons in the warped surface. Because these surfaces were generated from images they tend to have a large number of polygons. You can use vtkDecimatePro to reduce the number. You should also consider using vtkTriangleFilter followed by vtkStripper to convert the polygons (squares) into triangle strips which tend to render faster and consume less memory.
@@ -129,26 +136,26 @@ There are several ways to directly display image data. Two methods that are gene
 
 ### Image Viewer
 
-vtkImageViewer2 is a convenient class for displaying images. It replaces an earlier version of the class vtkImageViewer. vtkImageViewer2 internally encapsulates several objects - vtkRenderWindow, vtkRenderer, vtkImageActor and vtkImageMapToWindowLevelColors providing an easy to use class that can be dropped into your application. This class also creates an interactor style (vtkInteractorStyleImage) customized for images, that allows zooming and panning of images, and supports interactive window/level operations on the image. (See “Interactor Styles” on page 43 and “vtkRenderWindow Interaction Style” on page 283 for more information about interactor styles.) vtkImageViewer2 (unlike vtkImageViewer) uses the 3D rendering and texture mapping engine to draw an image on a plane. This allows for rapid rendering, zooming, and panning. The image is placed in the 3D scene at a depth based on the depth-coordinate of the particular image slice. Each call to SetSlice() changes the image data (slice) displayed and changes the depth of the displayed slice in the 3D scene. This can be controlled by the AutoAdjustCameraClippingRange option on the InteractorStyle. You may also set the orientation to display an XY, YZ or an XZ slice.
+vtkImageViewer2 is a convenient class for displaying images. It replaces an earlier version of the class vtkImageViewer. vtkImageViewer2 internally encapsulates several objects - vtkRenderWindow, vtkRenderer, vtkImageActor and vtkImageMapToWindowLevelColors providing an easy to use class that can be dropped into your application. This class also creates an interactor style (vtkInteractorStyleImage) customized for images, that allows zooming and panning of images, and supports interactive window/level operations on the image. (See Chapter 10 for more information about interactor styles.) vtkImageViewer2 (unlike vtkImageViewer) uses the 3D rendering and texture mapping engine to draw an image on a plane. This allows for rapid rendering, zooming, and panning. The image is placed in the 3D scene at a depth based on the depth-coordinate of the particular image slice. Each call to SetSlice() changes the image data (slice) displayed and changes the depth of the displayed slice in the 3D scene. This can be controlled by the AutoAdjustCameraClippingRange option on the InteractorStyle. You may also set the orientation to display an XY, YZ or an XZ slice.
 
 An example of using an image viewer to browse through the slices in a volume can be found in Widgets/Testing/Cxx/TestImageActorContourWidget.cxx. The following excerpt illustrates a typical usage of this class.
 
 ```cpp
-vtkImageViewer2 *ImageViewer = vtkImageViewer2::New();
-ImageViewer->SetInput(shifter->GetOutput());
-ImageViewer->SetColorLevel(127);
-ImageViewer->SetColorWindow(255);
-ImageViewer->SetupInteractor(iren);
-ImageViewer->SetSlice(40);
-ImageViewer->SetOrientationToXY();
-ImageViewer->Render();
+vtkNew<vtkImageViewer2> imageViewer;
+imageViewer->SetInputConnection(shifter->GetOutputPort());
+imageViewer->SetColorLevel(127);
+imageViewer->SetColorWindow(255);
+imageViewer->SetupInteractor(interactor);
+imageViewer->SetSlice(40);
+imageViewer->SetOrientationToXY();
+imageViewer->Render();
 ```
 
 It is possible to mix images and geometry, for instance :
 
 ```cpp
-viewer->SetInput( myImage );
-viewer->GetRenderer()->AddActor( myActor );
+viewer->SetInputConnection(myImage->GetOutputPort());
+viewer->GetRenderer()->AddActor(myActor);
 ```
 
 ![Figure 6-3](images/Figure_6-3.png)
@@ -158,7 +165,7 @@ viewer->GetRenderer()->AddActor( myActor );
 
 This can be used to annotate an image with a PolyData of "edges" or highlight sections of an image or display a 3D isosurface with a slice from the volume, etc. Any portions of your geometry that are in front of the displayed slice will be visible; any portions of your geometry that are behind the displayed slice will be obscured.
 
-The window-level transfer function is defined as shown in Figure 6–3. The level is the data value level that centers the window. The width (i.e., window) defines the range of data values that are mapped to the display. The slope of the resulting transfer function determines the amount of contrast in the final image. All data values outside of the window are window clamped to the data values at the boundaries of the window..
+The window-level transfer function is defined as shown in Figure 6–3. The level is the data value level that centers the window. The width (i.e., window) defines the range of data values that are mapped to the display. The slope of the resulting transfer function determines the amount of contrast in the final image. All data values outside of the window are clamped to the data values at the boundaries of the window.
 
 ### Image Actor
 
@@ -166,24 +173,25 @@ Using a vtkImageViewer is convenient when you would simply like to display the i
 
 The vtkImageActor object is a composite class that encapsulates both an actor and a mapper into one class. It is simple to use, as can be seen in this example.
 
-```tcl
-vtkBMPReader bmpReader
-bmpReader SetFileName "$VTK_DATA_ROOT/Data/masonry.bmp"
-vtkImageActor imageActor
-imageActor SetInput [bmpReader GetOutput]
+```python
+bmp_reader = vtkBMPReader()
+bmp_reader.SetFileName("masonry.bmp")
+
+image_actor = vtkImageActor()
+image_actor.SetInputData(bmp_reader.GetOutput())
 ```
 
 This image actor can then be added to the renderer using the AddProp() method. The vtkImageActor class expects that its input will have a length of 1 along one of the three dimensions, with the image extending along the other two dimensions. This allows the vtkImageActor to be connected to a volume through the use of a clipping filter without the need to reorganize the data if the clip is performed along the X or Y axis. (Note: the input image to vtkImageActor must be of type unsigned char. If your image type is different, you can use vtkImageCast or vtkImageShiftScale to convert to unsigned char.)
 
 ### vtkImagePlaneWidget
-Widgets are covered in "Interaction, Widgets and Selections" on page255. Suffice it to mention that this widget defines a plane that can be interactively placed in an image volume, with the plane displaying resliced data through the volume. Interpolation options to reslice the data include nearest neighbor, linear and cubic. The plane position and orientation can be interactively manipulated. One can also window level interactively on the resliced plane and optionally display window level and position annotations.
+Widgets are covered in Chapter 12 ("Interaction, Widgets and Selections"). Suffice it to mention that this widget defines a plane that can be interactively placed in an image volume, with the plane displaying resliced data through the volume. Interpolation options to reslice the data include nearest neighbor, linear and cubic. The plane position and orientation can be interactively manipulated. One can also window level interactively on the resliced plane and optionally display window level and position annotations.
 
 ```cpp
-vtkImagePlaneWidget* planeWidgetX = vtkImagePlaneWidget::New();
-planeWidgetX->SetInteractor( iren);
+vtkNew<vtkImagePlaneWidget> planeWidgetX;
+planeWidgetX->SetInteractor(interactor);
 planeWidgetX->RestrictPlaneToVolumeOn();
 planeWidgetX->SetResliceInterpolateToNearestNeighbour();
-planeWidgetX->SetInput(v16->GetOutput());
+planeWidgetX->SetInputConnection(v16->GetOutputPort());
 planeWidgetX->SetPlaneOrientationToXAxes();
 planeWidgetX->SetSliceIndex(32);
 planeWidgetX->DisplayTextOn();
@@ -192,7 +200,7 @@ planeWidgetX->On();
 
 ## 6.5 Image Sources
 
-There are some image processing objects that produce output but do not take any data objects as input. These are known as image sources, and some of the VTK image sources are described here. Refer to "Source Objects" on page 444 or to the Doxygen documentation for a more complete list of available image sources.
+There are some image processing objects that produce output but do not take any data objects as input. These are known as image sources, and some of the VTK image sources are described here. Refer to Chapter 12 ("Source Objects") or to the Doxygen documentation for a more complete list of available image sources.
 
 ### ImageCanvasSource2D
 
@@ -202,70 +210,70 @@ The vtkImageCanvasSource2D class creates a blank two-dimensional image of a spec
 
 *Figure 6–4 The results from a vtkImageCanvasSource2D source after drawing various primitives.*
 
-```tcl
-#set up the size and type of the image canvas
-vtkImageCanvasSource2D imCan
-imCan SetScalarTypeToUnsignedChar
-imCan SetExtent 0 511 0 511 0 0
+```python
+# Set up the size and type of the image canvas
+canvas = vtkImageCanvasSource2D()
+canvas.SetScalarTypeToUnsignedChar()
+canvas.SetExtent(0, 511, 0, 511, 0, 0)
 
 # Draw various primitives
-imCan SetDrawColor 86
-imCan FillBox 0 511 0 511
-imCan SetDrawColor 0
-imCan FillTube 500 20 30 400 5
-imCan SetDrawColor 255
-imCan DrawSegment 10 20 500 510
-imCan SetDrawColor 0
-imCan DrawCircle 400 350 80.0 Figure 6–4 The results from a
-imCan SetDrawColor 255 vtkImageCanvasSource2D source
-imCan FillPixel 450 350 after drawing various primitives.
-imCan SetDrawColor 170
-imCan FillTriangle 100 100 300 150 150 300
+canvas.SetDrawColor(86)
+canvas.FillBox(0, 511, 0, 511)
+canvas.SetDrawColor(0)
+canvas.FillTube(500, 20, 30, 400, 5)
+canvas.SetDrawColor(255)
+canvas.DrawSegment(10, 20, 500, 510)
+canvas.SetDrawColor(0)
+canvas.DrawCircle(400, 350, 80.0)
+canvas.SetDrawColor(255)
+canvas.FillPixel(450, 350)
+canvas.SetDrawColor(170)
+canvas.FillTriangle(100, 100, 300, 150, 150, 300)
 
-#Show the resulting image
-vtkImageViewer viewer
-viewer SetInputConnection [imCan GetOutputPort]
-viewer SetColorWindow 256
-viewer SetColorLevel 127.5
+# Show the resulting image
+viewer = vtkImageViewer2()
+viewer.SetInputConnection(canvas.GetOutputPort())
+viewer.SetColorWindow(256)
+viewer.SetColorLevel(127.5)
 ```
 
 ### ImageEllipsoidSource
 If you would like to write your own image source using a templated execute function, vtkImageEllipsoidSource is a good starting point. This object produces a binary image of an ellipsoid as output based on a center position, a radius along each axis, and the inside and outside values. The output scalar type can also be specified, and this is why the execute function is templated. This source is used internally by some of the imaging filters such as vtkImageDilateErode3D.
 
-If you want to create a vtkImageBoxSource, for example, to produce a binary image of a box, you could start by copying the vtkImageEllipsoidSource source and header files and doing a global search and replace. You would probably change the instance variable Radius to be Length since this is a more appropriate description for a box source. Finally, you would replace the code within the templated function vtkImageBoxSourceExecute to create the box image rather than the ellipsoid image. (For more information on creating image processing filters see “A Threaded Imaging Filter” on page401.)
+If you want to create a vtkImageBoxSource, for example, to produce a binary image of a box, you could start by copying the vtkImageEllipsoidSource source and header files and doing a global search and replace. You would probably change the instance variable Radius to be Length since this is a more appropriate description for a box source. Finally, you would replace the code within the templated function vtkImageBoxSourceExecute to create the box image rather than the ellipsoid image. (For more information on creating image processing filters see Chapter 12, "A Threaded Imaging Filter".)
 
-### ImageGaussianSource 
-he vtkImageGaussianSource object produces an image with pixel values determined according to a Gaussian distribution using a center location, a maximum value, and a standard deviation. The data type of the output of this image source is always floating point (i.e., double).
+### ImageGaussianSource
+The vtkImageGaussianSource object produces an image with pixel values determined according to a Gaussian distribution using a center location, a maximum value, and a standard deviation. The data type of the output of this image source is always floating point (i.e., double).
 
 If you would like to write your own source that produces just one type of output image, for example float, then this might be a good class to use as a starting point. Comparing the source code for vtkImageGaussianSource with that for vtkImageEllipsoidSource, you will notice that the filter implementation is in the RequestData() method for vtkImageGaussianSource, whereas in vtkImageEllipsoidSource the RequestData() method calls a templated function that contains the implementation.
 
 ### ImageGridSource
-If you would like to annotate your image with a 2D grid, vtkImageGridSource can be used to create an image with the grid pattern (Figure 6–5). The following example illustrates this use by blending a grid pattern with a slice from a CT dataset. The reader is a vtkImageReader that produces a 64 by 64 image.
+If you would like to annotate your image with a 2D grid, vtkImageGridSource can be used to create an image with the grid pattern (Figure 6–5). The following example illustrates this use by blending a grid pattern with a slice from a CT dataset. The reader is a vtkVolume16Reader that produces a 64 by 64 image.
 
 ![Figure 6-5](images/Figure_6-5.png)
 
-*Figure 6–5 A A grid pattern created by a vtkImageGridSource is overlayed on a slice of a CT dataset.*
+*Figure 6–5 A grid pattern created by a vtkImageGridSource is overlaid on a slice of a CT dataset.*
 
-```tcl
-vtkImageGridSource imageGrid
-imageGrid SetGridSpacing 16 16 0
-imageGrid SetGridOrigin 0 0 0
-imageGrid SetDataExtent 0 63 0 63 0 0
-imageGrid SetLineValue 4095
-imageGrid SetFillValue 0
-imageGrid SetDataScalarTypeToShort
+```python
+image_grid = vtkImageGridSource()
+image_grid.SetGridSpacing(16, 16, 0)
+image_grid.SetGridOrigin(0, 0, 0)
+image_grid.SetDataExtent(0, 63, 0, 63, 0, 0)
+image_grid.SetLineValue(4095)
+image_grid.SetFillValue(0)
+image_grid.SetDataScalarTypeToUnsignedShort()
 
-vtkImageBlend blend
-blend SetOpacity 0 0.5
-blend SetOpacity 1 0.5
-blend AddInputConnection [reader GetOutputPort]
-blend AddInputConnection [imageGrid GetOutputPort]
+blend = vtkImageBlend()
+blend.SetOpacity(0, 0.5)
+blend.SetOpacity(1, 0.5)
+blend.AddInputConnection(reader.GetOutputPort())
+blend.AddInputConnection(image_grid.GetOutputPort())
 
-vtkImageViewer viewer
-viewer SetInputConnection [blend GetOutputPort]
-viewer SetColorWindow 1000
-viewer SetColorLevel 500
-viewer Render
+viewer = vtkImageViewer2()
+viewer.SetInputConnection(blend.GetOutputPort())
+viewer.SetColorWindow(1000)
+viewer.SetColorLevel(500)
+viewer.Render()
 ```
 
 ### ImageNoiseSource
@@ -275,22 +283,23 @@ One thing to note about vtkImageNoiseSource is that it will produce a different 
 
 ### ImageSinusoidSource
 
-*Figure 6–6 The output of the sinusoid source shown on the left has been
-converted to unsigned char and volume rendered.*
+![Figure 6-6](images/Figure_6-6.png)
 
-The vtkImageSinusoidSource object can be used to create an image of a specified size where the pixel values are determined by a sinusoid function given direction, of the sinusoid source period, phase, and amplitude values. The shown on the left has been converted to unsigned char output of the sinusoid source is floating and volume rendered. point. In the image shown in Figure 6–6, the output of the sinusoid source has been converted to unsigned char values and volume rendered. This same output was passed through an outline filter to create the bounding box seen in the image.
+*Figure 6–6 The output of the sinusoid source shown on the left has been converted to unsigned char and volume rendered.*
 
-```tcl
-vtkImageSinusoidSource ss
-ss SetWholeExtent 0 99 0 99 0 99
-ss SetAmplitude 63
-ss SetDirection 1 0 0
-ss SetPeriod 25
+The vtkImageSinusoidSource object can be used to create an image of a specified size where the pixel values are determined by a sinusoid function given direction, period, phase, and amplitude values. The output of the sinusoid source is floating point. In the image shown in Figure 6–6, the output of the sinusoid source has been converted to unsigned char values and volume rendered. This same output was passed through an outline filter to create the bounding box seen in the image.
+
+```python
+sinusoid = vtkImageSinusoidSource()
+sinusoid.SetWholeExtent(0, 99, 0, 99, 0, 99)
+sinusoid.SetAmplitude(63)
+sinusoid.SetDirection(1, 0, 0)
+sinusoid.SetPeriod(25)
 ```
 
 ## 6.6 Image Processing
 
-Now we will consider a few examples that process image data. This is not an exhaustive description of all filters, but it will get you started using VTK’s image processing filters. You may wish to refer to the Doxygen documentation for more information. In addition, a more complete description can be found in "Imaging Filters" on page450.
+Now we will consider a few examples that process image data. This is not an exhaustive description of all filters, but it will get you started using VTK's image processing filters. You may wish to refer to the Doxygen documentation for more information. In addition, a more complete description can be found in Chapter 12 ("Imaging Filters").
 
 ### Convert Scalar Type
 
@@ -304,22 +313,25 @@ If you need to convert a floating point image containing intensities in the [-1,
 
 A frequent source of confusion in VTK occurs when users needs to change the origin, spacing, or extent of their data. It is tempting to get the output of some filter, and adjust these parameters to the desired values. However, as users quickly note this is only a temporary solution – the next time the pipeline updates, these changes are lost and the data will revert back to its previous shape and location. To change these parameters, it is necessary to introduce a filter into the pipeline to make the change. The vtkImageChangeInformation filter can be used to adjust the origin, spacing, and extent of a vtkImageData. The origin and spacing values can be set explicitly, as can the start of the output whole extent. Since the dimensions of the data do not change, the start of the whole extent fully defines the output whole extent. The vtkImageChangeInformation filter also contains several convenience methods to center the image, translate the extent, or translate and scale the origin and spacing values.
 
-In the following example we use a vtkImageReader to read in the raw medical data for a CT scan. We then pass this data through a 3D vtkImageGradient and display the result as a color image.
+In the following example we use a vtkVolume16Reader to read in the raw medical data for a CT scan. We then pass this data through a 3D vtkImageGradient and display the result as a color image.
 
-```tcl
-vtkImageReader reader
-reader SetDataByteOrderToLittleEndian
-reader SetDataExtent 0 63 0 63 1 93
-reader SetFilePrefix "$VTK_DATA_ROOT/Data/headsq/quarter"
-reader SetDataMask 0x7fff
-vtkImageGradient gradient
-gradient SetInputConnection [reader GetOutputPort]
-gradient SetDimensionality 3
-vtkImageViewer viewer
-viewer SetInputConnection [gradient GetOutputPort]
-viewer SetZSlice 22
-viewer SetColorWindow 400
-viewer SetColorLevel 0
+```python
+reader = vtkVolume16Reader()
+reader.SetDataDimensions(64, 64)
+reader.SetDataByteOrderToLittleEndian()
+reader.SetImageRange(1, 93)
+reader.SetFilePrefix(os.path.join(data_dir, "headsq", "quarter"))
+reader.SetDataMask(0x7FFF)
+
+gradient = vtkImageGradient()
+gradient.SetInputConnection(reader.GetOutputPort())
+gradient.SetDimensionality(3)
+
+viewer = vtkImageViewer2()
+viewer.SetInputConnection(gradient.GetOutputPort())
+viewer.SetSlice(22)
+viewer.SetColorWindow(400)
+viewer.SetColorLevel(0)
 ```
 
 ### Append Images
@@ -352,7 +364,7 @@ The vtkImageAppendComponents filter can be used to combine the components of mul
 
 ### Map Image to Color
 
-vtkImageMapToColors is used for transforming a grayscale image into a color one. (See Figure 6– 11.) The input’s scalar values may be of any data type. A user-selected component (chosen using the SetActiveComponent() method of vtkImageMapToColors) of the input’s scalar values is mapped through an instance of vtkScalarsToColors, and the color values from the lookup table are stored in the output image. vtkImageMapToWindowLevelColors, a subclass of vtkImageMapToColors, additionally modulates the color values with a window-level function (see Figure 6–3) before storing them in the output image. The scalar type of the output image of either filter is unsigned char.
+vtkImageMapToColors is used for transforming a grayscale image into a color one. (See Figure 6– 11.) The input's scalar values may be of any data type. A user-selected component (chosen using the SetActiveComponent() method of vtkImageMapToColors) of the input's scalar values is mapped through an instance of vtkScalarsToColors, and the color values from the lookup table are stored in the output image. vtkImageMapToWindowLevelColors, a subclass of vtkImageMapToColors, additionally modulates the color values with a window-level function (see Figure 6–3) before storing them in the output image. The scalar type of the output image of either filter is unsigned char.
 
 ![Figure 6-11](images/Figure_6-11.png)
 
@@ -362,7 +374,7 @@ vtkImageMapToColors is used for transforming a grayscale image into a color one.
 
 The vtkImageLuminance filter is basically the opposite of vtkImageMapToColors. (See Figure 6– 12.) It converts an RGB image (red, green, and blue color components) to a single-component grayscale image using the following formula.
 
-```
+```text
 luminance = 0.3*R + 0.59*G + 0.11*B
 ```
 
@@ -373,43 +385,44 @@ In this formula, R is the first component (red) of the input image, G is the sec
 *Figure 6–12 The image on the right is the result of passing the image on the left (the output of vtkImageMapToColors in the previous section) through a vtkImageLuminance filter. Note the similarity of the output image from this filter (the right-hand image) and the input image passed to vtkImageMapToColors.*
 
 ### Histogram
-vtkImageAccumulate is an image filter that produces generalized histograms of up to four dimensions. This is done by dividing the component space into discrete bins, then counting the number of pixels corresponding to each bin. The input image may be of any scalar type, but the output image will always be of integer type. If the input image has only one scalar component, then the output image will be one-dimensional, as shown in Figure 6–13. (This example is taken from VTK/Examples/ImageProcessing/Tcl/Histogram.tcl.)
+vtkImageAccumulate is an image filter that produces generalized histograms of up to four dimensions. This is done by dividing the component space into discrete bins, then counting the number of pixels corresponding to each bin. The input image may be of any scalar type, but the output image will always be of integer type. If the input image has only one scalar component, then the output image will be one-dimensional, as shown in Figure 6–13.
 
 ![Figure 6-13](images/Figure_6-13.png)
 
-*Figure 6–13 The vtkImageAccumulate class is used to generate a one dimensional histogram from a one-component input image..*
+*Figure 6–13 The vtkImageAccumulate class is used to generate a one dimensional histogram from a one-component input image.*
 
 ### Image Logic
 
 vtkImageLogic is an image processing filter that takes one or two inputs and performs a boolean logic operation on them (Figure 6–14). Most standard operations are supported including AND, OR, XOR, NAND, NOR, and NOT. This filter has two inputs, although for unary operations such as NOT only the first input is required. In the example provided below you will notice we use vtkImageEllipsoidSource to generate the two input images.
 
-```tcl
-vtkImageEllipsoidSource sphere1
-sphere1 SetCenter 95 100 0
-sphere1 SetRadius 70 70 70
-vtkImageEllipsoidSource sphere2
-sphere2 SetCenter 161 100 0
-sphere2 SetRadius 70 70 70
-vtkImageLogic xor
-xor SetInputConnection 0 \
-[sphere1 GetOutputPort]
-xor SetInputConnection 1 [sphere2 \
-GetOutputPort]
-xor SetOutputTrueValue 150 image logic.
-xor SetOperationToXor
-vtkImageViewer viewer
-viewer SetInput [xor GetOutput]
-viewer SetColorWindow 255
-viewer SetColorLevel 127.5
+```python
+sphere1 = vtkImageEllipsoidSource()
+sphere1.SetCenter(95, 100, 0)
+sphere1.SetRadius(70, 70, 70)
+
+sphere2 = vtkImageEllipsoidSource()
+sphere2.SetCenter(161, 100, 0)
+sphere2.SetRadius(70, 70, 70)
+
+xor = vtkImageLogic()
+xor.SetInputConnection(0, sphere1.GetOutputPort())
+xor.SetInputConnection(1, sphere2.GetOutputPort())
+xor.SetOutputTrueValue(150)
+xor.SetOperationToXor()
+
+viewer = vtkImageViewer2()
+viewer.SetInputConnection(xor.GetOutputPort())
+viewer.SetColorWindow(255)
+viewer.SetColorLevel(127.5)
 ```
 
 ![Figure 6-14](images/Figure_6-14.png)
 
-*Figure 6–14 Result of image logic*
+*Figure 6–14 Result of image logic.*
 
 ### Gradient
 
-vtkImageGradient is a filter that computes the gradient of an image or volume. You can control whether it computes a twoor three-dimensional gradient using the SetDimensionality() method. It will produce an output with either two or three scalar components per pixel depending on the dimensionality you specify. The scalar components correspond to the x, y, and optionally z components of the gradient vector. If you only want the gradient magnitude you can use the vtkImageGradientMagnitude filter or vtkImageGradient followed by vtkImageMagnitude.
+vtkImageGradient is a filter that computes the gradient of an image or volume. You can control whether it computes a two- or three-dimensional gradient using the SetDimensionality() method. It will produce an output with either two or three scalar components per pixel depending on the dimensionality you specify. The scalar components correspond to the x, y, and optionally z components of the gradient vector. If you only want the gradient magnitude you can use the vtkImageGradientMagnitude filter or vtkImageGradient followed by vtkImageMagnitude.
 
 vtkImageGradient computes the gradient by using central differences. This means that to compute the gradient for a pixel we must look at its left and right neighbors. This creates a problem for the pixels on the outside edges of the image since they will be missing one of their two neighbors. There are two solutions to this problem and they are controlled by the HandleBoundaries instance variable. If HandleBoundaries is on, then vtkImageGradient will use a modified gradient calculation for all of the edge pixels. If HandleBoundaries is off, vtkImageGradient will ignore those edge pixels and produce a resulting image that is smaller than the original input image.
 
@@ -417,24 +430,26 @@ vtkImageGradient computes the gradient by using central differences. This means 
 
 Smoothing an image with a Gaussian kernel is similar to the gradient calculation done above. It has a dimensionality that controls what dimension Gaussian kernel to convolve against.
 
-The class vtkGaussianSmooth also has SetStandardDeviations() and SetRadiusFactors() methods that control the shape of the Gaussian kernel and when to truncate it. The example provided below is very similar to the gradient calculation. We start with a vtkImageReader connected to the vtkImageGaussianSmooth which finally connects to the vtkImageViewer.
+The class vtkImageGaussianSmooth also has SetStandardDeviations() and SetRadiusFactors() methods that control the shape of the Gaussian kernel and when to truncate it. The example provided below is very similar to the gradient calculation. We start with a vtkVolume16Reader connected to the vtkImageGaussianSmooth which finally connects to the vtkImageViewer2.
 
-```tcl
-vtkImageReader reader
-reader SetDataByteOrderToLittleEndian
-reader SetDataExtent 0 63 0 63 1 93
+```python
+reader = vtkVolume16Reader()
+reader.SetDataDimensions(64, 64)
+reader.SetDataByteOrderToLittleEndian()
+reader.SetImageRange(1, 93)
+reader.SetFilePrefix(os.path.join(data_dir, "headsq", "quarter"))
+reader.SetDataMask(0x7FFF)
 
-reader SetFilePrefix "$VTK_DATA_ROOT/Data/headsq/quarter"
-reader SetDataMask 0x7fff
-vtkImageGaussianSmooth smooth
-smooth SetInputConnection [reader GetOutputPort]
-smooth SetDimensionality 2
-smooth SetStandardDeviations 2 10
-vtkImageViewer2 viewer
-viewer SetInputConnection [smooth GetOutputPort]
-viewer SetSlice 22
-viewer SetColorWindow 2000
-viewer SetColorLevel 1000
+smooth = vtkImageGaussianSmooth()
+smooth.SetInputConnection(reader.GetOutputPort())
+smooth.SetDimensionality(2)
+smooth.SetStandardDeviations(2, 10)
+
+viewer = vtkImageViewer2()
+viewer.SetInputConnection(smooth.GetOutputPort())
+viewer.SetSlice(22)
+viewer.SetColorWindow(2000)
+viewer.SetColorLevel(1000)
 ```
 
 ### Image Flip
@@ -447,7 +462,7 @@ The vtkImageFlip filter can be used to reflect the input image data along an axi
 
 ### Image Permute
 
-vtkImagePermute allows you to reorder the axes of the input image or volume. (See Figure 6– 16.) The FilteredAxes instance variable indicates which indicates how the axes should be reordered – which of the input axes will be labelled X, which Y, and which Z in the output.
+vtkImagePermute allows you to reorder the axes of the input image or volume. (See Figure 6– 16.) The FilteredAxes instance variable indicates how the axes should be reordered – which of the input axes will be labelled X, which Y, and which Z in the output.
 
 ![Figure 6-16](images/Figure_6-16.png)
 
@@ -455,7 +470,7 @@ vtkImagePermute allows you to reorder the axes of the input image or volume. (Se
 
 ### Image Mathematics
 
-The vtkImageMathematics filter provides basic unary and binary mathematical operations. Depending on the operation set, this filter expects either one or two input images. When two input images are required, they must have the same scalar type and the same number of components, but do not need to have the same dimensions. The output image will have an extent that is the union of the extents of the input images. Origin and spacing of the output image will match the origin and spacing of the first input image. The unary operations are described below. Note that IP is the input pixel value for component n n, OP is the output pixel value for component n, and C and K are constant values that can be speci- n fied as instance variables. DivideByZeroToC is an instance variable that specifies what happens when a divide by zero is encountered. When DivideByZeroToC is on, then the C constant value is the result of a divide by zero; otherwise the maximum value in the range of the output scalar type is used when a divide by zero occurs. 
+The vtkImageMathematics filter provides basic unary and binary mathematical operations. Depending on the operation set, this filter expects either one or two input images. When two input images are required, they must have the same scalar type and the same number of components, but do not need to have the same dimensions. The output image will have an extent that is the union of the extents of the input images. Origin and spacing of the output image will match the origin and spacing of the first input image. The unary operations are described below. Note that IP is the input pixel value for component n n, OP is the output pixel value for component n, and C and K are constant values that can be speci- n fied as instance variables. DivideByZeroToC is an instance variable that specifies what happens when a divide by zero is encountered. When DivideByZeroToC is on, then the C constant value is the result of a divide by zero; otherwise the maximum value in the range of the output scalar type is used when a divide by zero occurs.
 
 **VTK_INVERT:** Invert the input.e Use C or the maximum output scalar value when a divide by zero is encountered, depending on the value of the DivideByZeroToC instance variable.<br/>
 &nbsp; &nbsp; if IP<sub>n</sub> != 0; OP<sub>n</sub> = 1.0 / IP<sub>n</sub><br/>
@@ -473,7 +488,7 @@ The vtkImageMathematics filter provides basic unary and binary mathematical oper
 &nbsp; &nbsp; OP<sub>n</sub> = fabs( IP<sub>n</sub> )<br/>
 **VTK_SQR:** Square the input image values.<br/>
 &nbsp; &nbsp; OP<sub>n</sub> = IP<sub>n</sub> * IP<sub>n</sub><br/>
-**VTK_SQRT:** Take the square root of the input image values.</br> 
+**VTK_SQRT:** Take the square root of the input image values.</br>
 &nbsp; &nbsp; OP<sub>n</sub> = sqrt( IP<sub>n</sub> )<br/>
 **VTK_ATAN:** Compute the arctangent of the input image values.<br/>
 &nbsp; &nbsp; OP<sub>n</sub> = atan( IP<sub>n</sub> )<br/>
@@ -487,19 +502,19 @@ The vtkImageMathematics filter provides basic unary and binary mathematical oper
 &nbsp; &nbsp; OP<sub>0</sub> = IP<sub>0</sub><br/>
 &nbsp; &nbsp; OP<sub>1</sub> = -IP<sub>1</sub><br/>
 
-The binary operations follow. The notation used is similar to that for the unary operations, except that IP1 is the first input’s pixel value for component n, and IP2 is the second input’s pixel value for n n component n. 
+The binary operations follow. The notation used is similar to that for the unary operations, except that IP1 is the first input's pixel value for component n, and IP2 is the second input's pixel value for n n component n.
 
 **VTK_ADD:** Add the second input image to the first one.<br/>
 &nbsp; &nbsp; OP<sub>n</sub> = IP1<sub>n</sub> + IP2<sub>n</sub><br/>
-**VTK_SUBTRACT:** Subtract the second input image’s values from those of the first input.<br/>
+**VTK_SUBTRACT:** Subtract the second input image's values from those of the first input.<br/>
 &nbsp; &nbsp; OP<sub>n</sub> = IP1<sub>n</sub> - IP2<sub>n</sub><br/>
-**VTK_MULTIPLY:** Multiply the first input image’s values by those of the second input.<br/>
+**VTK_MULTIPLY:** Multiply the first input image's values by those of the second input.<br/>
 &nbsp; &nbsp; OP<sub>n</sub> = IP1<sub>n</sub> * IP2<sub>n</sub><br/>
-**VTK_DIVIDE:** Divide the first input image’s values by those of the second input. Use C or the maximum output scalar value when a divide by zero is encountered, depending on the value of the DivideByZeroToC instance variable.<br/>
+**VTK_DIVIDE:** Divide the first input image's values by those of the second input. Use C or the maximum output scalar value when a divide by zero is encountered, depending on the value of the DivideByZeroToC instance variable.<br/>
 &nbsp; &nbsp; if IP2<sub>n</sub> != 0; OP<sub>n</sub> = IP1<sub>n</sub> / IP2<sub>n</sub><br/>
 &nbsp; &nbsp; if IP2<sub>n</sub> == 0 and DivideByZeroToC; then OP<sub>n</sub> = C<br/>
 &nbsp; &nbsp; if IP2<sub>n</sub> == 0 and !DivideByZeroToC; then OP<sub>n</sub> = maximum scalar value<br/>
-**VTK_COMPLEX_MULTIPLY:** This operation requires that both input images have twocomponent scalars. The first component is real-valued, and the second component is imaginary. Multiply the first input image’s values by those of the second input using complex multiplication.<br/>
+**VTK_COMPLEX_MULTIPLY:** This operation requires that both input images have twocomponent scalars. The first component is real-valued, and the second component is imaginary. Multiply the first input image's values by those of the second input using complex multiplication.<br/>
 &nbsp; &nbsp; OP<sub>0</sub> = IP1<sub>0</sub> * IP2<sub>0</sub> - IP1<sub>1</sub> * IP2<sub>1</sub><br/>
 &nbsp; &nbsp; OP<sub>1</sub> = IP1<sub>1</sub> * IP2<sub>0</sub> + IP1<sub>0</sub> * IP2<sub>1</sub><br/>
 **VTK_MIN:** Compare corresponding values in the two images, and return the smaller value. <br/>
@@ -508,66 +523,61 @@ The binary operations follow. The notation used is similar to that for the unary
 **VTK_MAX:** Compare corresponding values in the two images, and return the larger value.<br/>
 &nbsp; &nbsp; if IP1<sub>n</sub> > IP2<sub>n</sub> ; OP<sub>n</sub> = IP1<sub>n</sub><br/>
 &nbsp; &nbsp; if IP2<sub>n</sub> > IP1<sub>n</sub> ; OP<sub>n</sub> = IP2<sub>n</sub><br/>
-**VTK_ATAN2:** For each pair of values from the two inputs, divide the first value by the second value, and compute the arctangent of the result. If the second input’s value is zero, or both inputs’ values are zero, the output value is set to 0.<br/>
+**VTK_ATAN2:** For each pair of values from the two inputs, divide the first value by the second value, and compute the arctangent of the result. If the second input's value is zero, or both inputs' values are zero, the output value is set to 0.<br/>
 &nbsp; &nbsp; if IP2<sub>n</sub> = 0; OP<sub>n</sub> = 0<br/>
 &nbsp; &nbsp; if IP1<sub>n</sub> = 0 and IP2<sub>n</sub> = 0; OP = 0<br/>
 &nbsp; &nbsp; IP2<sub>n</sub> != 0; OP<sub>n</sub> = atan( IP1<sub>n</sub> / IP2<sub>n</sub> )<br/>
 
 ### Image Reslice
 
-vtkImageReslice is a contributed class that offers high-performance image resampling along an arbitrarily-oriented volume (or image). The extent, origin, and sampling density of the output data can also be set. This class provides several other imaging filters: it can permute, flip, rotate, scale, resample, and pad image data in any combination. It can also extract oblique slices from image volumes, which no other VTK imaging filter can do. The following script demonstrates how to use vtkImage-Reslice.
+vtkImageReslice is a contributed class that offers high-performance image resampling along an arbitrarily-oriented volume (or image). The extent, origin, and sampling density of the output data can also be set. This class provides several other imaging filters: it can permute, flip, rotate, scale, resample, and pad image data in any combination. It can also extract oblique slices from image volumes, which no other VTK imaging filter can do. The following script demonstrates how to use vtkImageReslice.
 
 ![Figure 6-17](images/Figure_6-17.png)
 
 *Figure 6–17 Output of vtkImageReslice with a gray background level set.*
 
-```tcl
-vtkBMPReader reader
-vtkImagereader reader SetFileName "$VTK_DATA_ROOT/Data/masonry.bmp"
-redaer SetDataExtent 0 255 0 255 0 0
-reader SetDataSpacing 1 1 1
-reader SetDataOrigin 0 0 0
-reader UpdateWholeExtent
+```python
+reader = vtkBMPReader()
+reader.SetFileName(os.path.join(data_dir, "masonry.bmp"))
 
-vtkTransform transform
-transform RotateZ 45 transform Scale 1.414 1.414 1.414
+transform = vtkTransform()
+transform.RotateZ(45)
+transform.Scale(1.414, 1.414, 1.414)
 
-vtkImageReslice reslice
-reslice SetInputConnection [reader GetOutputPort]
-reslice SetResliceTransform transform
-reslice SetInterpolationModeToCubic
-reslice WrapOn reslice AutoCropOutputOn
+reslice = vtkImageReslice()
+reslice.SetInputConnection(reader.GetOutputPort())
+reslice.SetResliceTransform(transform)
+reslice.SetInterpolationModeToCubic()
+reslice.WrapOn()
+reslice.AutoCropOutputOn()
 
-vtkImageViewer2 viewer
-viewer SetInputConnection [reslice GetOutputPort]
-viewer SetSlice 0
-
-viewer SetColorWindow 256.0
-viewer SetColorLevel 127.5
-viewer Render
+viewer = vtkImageViewer2()
+viewer.SetInputConnection(reslice.GetOutputPort())
+viewer.SetSlice(0)
+viewer.SetColorWindow(256.0)
+viewer.SetColorLevel(127.5)
+viewer.Render()
 ```
 
-In this example (Figure 6–17) a volume of size 642 x 93 is read. A transform is used to position a volume on which to resample (or reslice) the data, and cubic interpolation between voxels is used. The wrap-pad feature is turned on, and (by setting the variable AutoCropOutput) the output extent will be resized large enough that none of the resliced data will be cropped. By default, the spacing of the output volume is set at 1.0, and the output origin and extent are adjusted to enclose the input volume.
+In this example (Figure 6–17) a BMP image is read and resliced. A transform is used to rotate the image 45 degrees and scale it, and cubic interpolation between pixels is used. The wrap-pad feature is turned on, and (by setting the variable AutoCropOutput) the output extent will be resized large enough that none of the resliced data will be cropped. By default, the spacing of the output volume is set at 1.0, and the output origin and extent are adjusted to enclose the input volume.
 
 ### Iterating through an image
 
 VTK also provides STL like iterators to make it convenient to iterate and retrieve / set pixel values in an image. The class vtkImageIterator can be used to accomplish this. It is templated over the datatype of the image. Its constructor takes as argument the subregion over which to iterate over.
 
 ```cpp
-int subRegion[6] = { 10, 20, 10, 20, 10, 20 };
-vtkImageIterator< unsigned char > it( image, subRegion );
+int subRegion[6] = {10, 20, 10, 20, 10, 20};
+vtkImageIterator<unsigned char> it(image, subRegion);
 
-while( !it.IsAtEnd() )
+while (!it.IsAtEnd())
 {
-unsigned char *inSI = it.BeginSpan();
-unsigned char *inSIEnd = it.EndSpan();
-while (inSI != inSIEnd)
-
-{
-*inSI = (255 - *inSI);
-++inSI;
-}
-it.NextSpan();
-}
+    unsigned char *inSI = it.BeginSpan();
+    unsigned char *inSIEnd = it.EndSpan();
+    while (inSI != inSIEnd)
+    {
+        *inSI = (255 - *inSI);
+        ++inSI;
+    }
+    it.NextSpan();
 }
 ```
