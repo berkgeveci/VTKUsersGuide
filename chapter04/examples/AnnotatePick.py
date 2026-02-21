@@ -76,7 +76,7 @@ renderer.AddViewProp(text_actor)
 renderer.AddActor(sphere_actor)
 renderer.AddActor(spike_actor)
 renderer.SetBackground(1, 1, 1)
-render_window.SetSize(600, 600)
+render_window.SetSize(800, 800)
 
 # Get the camera and zoom in closer to the image.
 renderer.ResetCamera()

@@ -170,7 +170,7 @@ renderer.AddViewProp(single_line_text_actor_t)
 renderer.AddViewProp(grid_actor)
 
 renderer.SetBackground(1, 1, 1)
-render_window.SetSize(500, 300)
+render_window.SetSize(1200, 800)
 renderer.GetActiveCamera().Zoom(1.5)
 
 interactor.Initialize()

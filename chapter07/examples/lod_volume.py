@@ -83,7 +83,7 @@ volume_lod.AddLOD(hires_mapper, volume_property, 0.0)
 renderer = vtkRenderer()
 render_window = vtkRenderWindow()
 render_window.AddRenderer(renderer)
-render_window.SetSize(600, 600)
+render_window.SetSize(800, 800)
 
 interactor = vtkRenderWindowInteractor()
 interactor.SetRenderWindow(render_window)

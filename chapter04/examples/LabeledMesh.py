@@ -121,7 +121,7 @@ renderer.AddViewProp(point_labels)
 renderer.AddViewProp(cell_labels)
 
 renderer.SetBackground(1, 1, 1)
-render_window.SetSize(500, 500)
+render_window.SetSize(800, 800)
 
 
 # Create a function to draw the selection window at each location it

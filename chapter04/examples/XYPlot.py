@@ -193,7 +193,7 @@ renderer2.SetViewport(0.5, 0.0, 1.0, 1.0)
 renderer2.AddViewProp(xyplot)
 renderer2.AddViewProp(xyplot2)
 renderer2.AddViewProp(xyplot3)
-render_window.SetSize(500, 250)
+render_window.SetSize(1200, 800)
 
 # Set up the camera parameters.
 cam1 = renderer.GetActiveCamera()

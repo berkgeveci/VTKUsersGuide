@@ -64,7 +64,7 @@ interactor.SetRenderWindow(render_window)
 renderer.AddActor(actor)
 renderer.AddViewProp(scalar_bar)
 renderer.SetBackground(0.1, 0.2, 0.4)
-render_window.SetSize(600, 600)
+render_window.SetSize(800, 800)
 
 renderer.ResetCamera()
 render_window.Render()

@@ -51,7 +51,7 @@ interactor.SetRenderWindow(render_window)
 # Add the actors to the renderer, set the background and size
 renderer.AddActor(plane_actor)
 renderer.SetBackground(0.1, 0.2, 0.4)
-render_window.SetSize(500, 500)
+render_window.SetSize(800, 800)
 
 # Render the image
 render_window.Render()

@@ -59,7 +59,7 @@ renderer.AddViewProp(text_actor)
 renderer.AddActor(sphere_actor)
 
 renderer.SetBackground(1, 1, 1)
-render_window.SetSize(600, 300)
+render_window.SetSize(800, 800)
 renderer.ResetCamera()
 renderer.GetActiveCamera().Zoom(1.5)
 render_window.Render()

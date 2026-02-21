@@ -71,7 +71,7 @@ render_window = vtkRenderWindow()
 render_window.AddRenderer(renderer)
 render_window.AddRenderer(renderer2)
 render_window.SetWindowName("VTK - Cube Axes")
-render_window.SetSize(600, 300)
+render_window.SetSize(800, 800)
 interactor = vtkRenderWindowInteractor()
 interactor.SetRenderWindow(render_window)
 

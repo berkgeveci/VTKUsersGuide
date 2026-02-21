@@ -51,7 +51,7 @@ interactor.SetRenderWindow(render_window)
 # Add the actors to the renderer, set the background and size
 renderer.AddActor(cylinder_actor)
 renderer.SetBackground(0.1, 0.2, 0.4)
-render_window.SetSize(200, 200)
+render_window.SetSize(800, 800)
 
 # This allows the interactor to initialize itself. It has to be
 # called before an event loop.

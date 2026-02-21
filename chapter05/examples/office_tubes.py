@@ -129,7 +129,7 @@ camera.SetViewAngle(18.604)
 camera.Zoom(1.2)
 ren.SetActiveCamera(camera)
 
-ren_win.SetSize(500, 300)
+ren_win.SetSize(1200, 800)
 
 iren.Initialize()
 ren_win.Render()

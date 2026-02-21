@@ -74,7 +74,7 @@ outline_actor.SetMapper(outline_mapper)
 # Rendering
 renderer = vtkRenderer()
 render_window = vtkRenderWindow()
-render_window.SetSize(400, 400)
+render_window.SetSize(800, 800)
 render_window.AddRenderer(renderer)
 interactor = vtkRenderWindowInteractor()
 interactor.SetRenderWindow(render_window)

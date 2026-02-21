@@ -81,7 +81,7 @@ parison_actor.SetMapper(parison_mapper)
 ren = vtkRenderer()
 ren_win = vtkRenderWindow()
 ren_win.AddRenderer(ren)
-ren_win.SetSize(500, 375)
+ren_win.SetSize(1000, 800)
 iren = vtkRenderWindowInteractor()
 iren.SetRenderWindow(ren_win)
 

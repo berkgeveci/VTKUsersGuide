@@ -48,7 +48,7 @@ renderer.AddObserver("StartEvent", my_callback)
 
 render_window = vtkRenderWindow()
 render_window.AddRenderer(renderer)
-render_window.SetSize(300, 300)
+render_window.SetSize(800, 800)
 
 # Loop over 360 degrees and render the cone each time
 for i in range(360):

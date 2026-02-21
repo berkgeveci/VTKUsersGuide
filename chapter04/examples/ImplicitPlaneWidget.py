@@ -92,7 +92,7 @@ renderer.AddActor(select_actor)
 
 # Set the background and size
 renderer.SetBackground(0.1, 0.2, 0.4)
-render_window.SetSize(600, 600)
+render_window.SetSize(800, 800)
 
 render_window.Render()
 

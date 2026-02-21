@@ -48,7 +48,7 @@ fran_actor.GetProperty().SetColor(1.0, 0.49, 0.25)
 ren = vtkRenderer()
 ren_win = vtkRenderWindow()
 ren_win.AddRenderer(ren)
-ren_win.SetSize(250, 250)
+ren_win.SetSize(800, 800)
 iren = vtkRenderWindowInteractor()
 iren.SetRenderWindow(ren_win)
 

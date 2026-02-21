@@ -77,7 +77,7 @@ outline_actor.GetProperty().SetColor(0, 0, 0)
 ren = vtkRenderer()
 ren_win = vtkRenderWindow()
 ren_win.AddRenderer(ren)
-ren_win.SetSize(500, 500)
+ren_win.SetSize(800, 800)
 iren = vtkRenderWindowInteractor()
 iren.SetRenderWindow(ren_win)
 
