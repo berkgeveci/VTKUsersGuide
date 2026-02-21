@@ -5,6 +5,7 @@
 import vtk.vtkGraphLayoutView;
 import vtk.vtkNativeLibrary;
 import vtk.vtkRandomGraphSource;
+import vtk.vtkRenderWindow;
 
 public class HelloWorld {
 
@@ -24,6 +25,7 @@ public class HelloWorld {
         vtkGraphLayoutView view = new vtkGraphLayoutView();
         view.AddRepresentationFromInputConnection(source.GetOutputPort());
 
+        view.GetRenderWindow().SetSize(800, 800);
         view.ResetCamera();
         view.Render();
         view.GetInteractor().Start();

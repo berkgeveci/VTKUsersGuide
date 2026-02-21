@@ -7,6 +7,7 @@
 #include <vtkGraphLayoutView.h>
 #include <vtkMutableDirectedGraph.h>
 #include <vtkNew.h>
+#include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkStringArray.h>
 #include <vtkTree.h>
@@ -57,6 +58,7 @@ int main(int, char*[])
     view->SetVertexLabelArrayName("Label");
     view->SetVertexLabelVisibility(true);
 
+    view->GetRenderWindow()->SetSize(800, 800);
     view->ResetCamera();
     view->Render();
     view->GetInteractor()->Start();

@@ -5,6 +5,7 @@
 #include <vtkGraphLayoutView.h>
 #include <vtkNew.h>
 #include <vtkRandomGraphSource.h>
+#include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 
 int main(int, char*[])
@@ -14,6 +15,7 @@ int main(int, char*[])
     vtkNew<vtkGraphLayoutView> view;
     view->SetRepresentationFromInputConnection(source->GetOutputPort());
 
+    view->GetRenderWindow()->SetSize(800, 800);
     view->ResetCamera();
     view->Render();
     view->GetInteractor()->Start();
