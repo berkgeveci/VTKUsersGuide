@@ -230,7 +230,7 @@ from vtkmodules.vtkRenderingCore import (
     vtkActor, vtkLight, vtkPolyDataMapper,
     vtkVolume, vtkVolumeProperty,
 )
-from vtkmodules.vtkRenderingVolume import vtkGPUVolumeRayCastMapper
+from vtkmodules.vtkRenderingVolume import vtkFixedPointVolumeRayCastMapper
 
 # Create a geometric sphere
 sphere = vtkSphereSource()
@@ -243,29 +243,35 @@ mapper.SetInputConnection(sphere.GetOutputPort())
 actor = vtkActor()
 actor.SetMapper(mapper)
 actor.GetProperty().SetColor(1, 1, 1)
-actor.GetProperty().SetAmbient(0.01)
+actor.GetProperty().SetAmbient(0.1)
 actor.GetProperty().SetDiffuse(0.7)
-actor.GetProperty().SetSpecular(0.5)
+actor.GetProperty().SetSpecular(0.7)
 actor.GetProperty().SetSpecularPower(70.0)
 
 # Read in a volumetric sphere
 reader = vtkSLCReader()
 reader.SetFileName("sphere.slc")
-# Use this transfer function for both opacity and color
+# Constant white color transfer function
+color_transfer_function = vtkPiecewiseFunction()
+color_transfer_function.AddSegment(0, 1.0, 255, 1.0)
+# Smooth opacity ramp: background transparent, sphere opaque
 opacity_transfer_function = vtkPiecewiseFunction()
-opacity_transfer_function.AddSegment(0, 1.0, 255, 1.0)
+opacity_transfer_function.AddPoint(0, 0.0)
+opacity_transfer_function.AddPoint(40, 0.0)
+opacity_transfer_function.AddPoint(80, 1.0)
+opacity_transfer_function.AddPoint(255, 1.0)
 # Make the volume property match the geometric one
 volume_property = vtkVolumeProperty()
-volume_property.SetColor(opacity_transfer_function)
+volume_property.SetColor(color_transfer_function)
 volume_property.SetScalarOpacity(opacity_transfer_function)
 volume_property.ShadeOn()
 volume_property.SetInterpolationTypeToLinear()
 volume_property.SetDiffuse(0.7)
-volume_property.SetAmbient(0.01)
-volume_property.SetSpecular(0.5)
+volume_property.SetAmbient(0.1)
+volume_property.SetSpecular(0.7)
 volume_property.SetSpecularPower(70.0)
 
-volume_mapper = vtkGPUVolumeRayCastMapper()
+volume_mapper = vtkFixedPointVolumeRayCastMapper()
 volume_mapper.SetInputConnection(reader.GetOutputPort())
 volume = vtkVolume()
 volume.SetMapper(volume_mapper)
@@ -280,17 +286,17 @@ red_light = vtkLight()
 red_light.SetColor(1, 0, 0)
 red_light.SetPosition(1000, 25, 25)
 red_light.SetFocalPoint(25, 25, 25)
-red_light.SetIntensity(0.5)
+red_light.SetIntensity(1.5)
 green_light = vtkLight()
 green_light.SetColor(0, 1, 0)
 green_light.SetPosition(25, 1000, 25)
 green_light.SetFocalPoint(25, 25, 25)
-green_light.SetIntensity(0.5)
+green_light.SetIntensity(1.5)
 blue_light = vtkLight()
 blue_light.SetColor(0, 0, 1)
 blue_light.SetPosition(25, 25, 1000)
 blue_light.SetFocalPoint(25, 25, 25)
-blue_light.SetIntensity(0.5)
+blue_light.SetIntensity(1.5)
 
 # Add the lights to the renderer
 renderer.AddLight(red_light)
