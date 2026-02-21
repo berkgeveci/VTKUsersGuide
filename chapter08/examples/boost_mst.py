@@ -50,10 +50,9 @@ view.SetColorEdges(True)
 view.SetLayoutStrategyToSimple2D()
 
 # Use pedigree id selection and set MST as the selection
-view.SetSelectionType(2)
-view.GetRepresentation(0).GetAnnotationLink().SetCurrentSelection(
-    mst_selection.GetOutput()
-)
+rep = view.GetRepresentation(0)
+rep.SetSelectionType(2)
+rep.GetAnnotationLink().SetCurrentSelection(mst_selection.GetOutput())
 
 # Apply a theme with highlighted selection
 theme = vtkViewTheme.CreateMellowTheme()
