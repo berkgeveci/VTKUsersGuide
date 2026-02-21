@@ -935,11 +935,11 @@ axes.SetAxisLabelTextProperty(tprop)
 Note that there are two ways that the axes can be drawn. By default, the outer edges of the bounding box are used (SetFlyModeToOuterEdges()). You can also place the axes at the vertex closest to the camera position (SetFlyModeToClosestTriad()).
 
 ### Labeling Data
-In some applications, you may wish to display numerical values from an underlying data set. The class vtkLabeledDataMapper allows you to label the data associated with the points of a dataset. This includes scalars, vectors, tensors, normals, texture coordinates, and field data, as well as the point ids of the dataset. The text labels are placed on the overlay plane of the rendered image as shown in Figure 4–12. The following script uses three new classes, vtkCellCenters (to generate points at the parametric centers of cells), vtkIdFilter (to generate ids as scalar or field data from dataset ids), and vtkSelectVisiblePoints (to select those points currently visible), to label the cell and point ids of the sphere. In addition, vtkSelectVisiblePoints has the ability to define a "window" in display (pixel) coordinates in which it operates — all points outside of the window are discarded.
+In some applications, you may wish to display numerical values from an underlying data set. The class vtkLabeledDataMapper allows you to label the data associated with the points of a dataset. This includes scalars, vectors, tensors, normals, texture coordinates, and field data, as well as the point ids of the dataset. The text labels are placed on the overlay plane of the rendered image as shown in Figure 4–12. The following script uses three new classes, vtkCellCenters (to generate points at the parametric centers of cells), vtkGenerateIds (to generate ids as scalar or field data from dataset ids), and vtkSelectVisiblePoints (to select those points currently visible), to label the cell and point ids of the sphere. In addition, vtkSelectVisiblePoints has the ability to define a "window" in display (pixel) coordinates in which it operates — all points outside of the window are discarded.
 
 ```python
 from vtkmodules.vtkFiltersSources import vtkSphereSource
-from vtkmodules.vtkFiltersCore import vtkIdFilter, vtkCellCenters
+from vtkmodules.vtkFiltersCore import vtkGenerateIds, vtkCellCenters
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkActor2D,
@@ -957,7 +957,7 @@ sphere_actor = vtkActor()
 sphere_actor.SetMapper(sphere_mapper)
 
 # Generate ids for labeling
-ids = vtkIdFilter()
+ids = vtkGenerateIds()
 ids.SetInputConnection(sphere.GetOutputPort())
 ids.PointIdsOn()
 ids.CellIdsOn()
@@ -974,7 +974,7 @@ vis_pts.SetSelection(xmin, xmin + x_length, ymin, ymin + y_length)
 
 ldm = vtkLabeledDataMapper()
 ldm.SetInputConnection(vis_pts.GetOutputPort())
-ldm.SetLabelFormat("%g")
+ldm.SetLabelFormat("{}")
 ldm.SetLabelModeToLabelFieldData()
 
 point_labels = vtkActor2D()
@@ -992,7 +992,7 @@ vis_cells.SetSelection(xmin, xmin + x_length, ymin, ymin + y_length)
 
 cell_mapper = vtkLabeledDataMapper()
 cell_mapper.SetInputConnection(vis_cells.GetOutputPort())
-cell_mapper.SetLabelFormat("%g")
+cell_mapper.SetLabelFormat("{}")
 cell_mapper.SetLabelModeToLabelFieldData()
 cell_mapper.GetLabelTextProperty().SetColor(0, 1, 0)
 
