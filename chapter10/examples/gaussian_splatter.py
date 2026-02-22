@@ -68,7 +68,7 @@ def read_financial_data(filename, x_name, y_name, z_name, s_name):
         lo = min(data)
         hi = max(data)
         rng = hi - lo if hi != lo else 1.0
-        return [lo + v / rng for v in data]
+        return [(v - lo) / rng for v in data]
 
     xv = normalize(columns[x_name])
     yv = normalize(columns[y_name])
