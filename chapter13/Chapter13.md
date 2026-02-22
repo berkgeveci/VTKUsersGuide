@@ -4,19 +4,21 @@ The greatest power in a visualization system is not in its ability to process da
 
 ## 13.1 Interactors
 
-Once you've visualized your data, you typically want to interact with it. The Visualization Toolkit offers several approaches to do this. The first approach is to use the built in class vtkRenderWindowInteractor. The second approach is to create your own interactor by specifying event bindings. And don't forget that if you are using an interpreted language you can type commands at run-time. You may also wish to refer to “Picking” on page59 to see how to select data from the screen. (Note: Developers can also interface to a windowing system of their choice. See “Integrating With The Windowing System” on page421.)
+Once you've visualized your data, you typically want to interact with it. The Visualization Toolkit offers several approaches to do this. The first approach is to use the built in class vtkRenderWindowInteractor. The second approach is to create your own interactor by specifying event bindings. And don't forget that if you are using an interpreted language you can type commands at run-time. You may also wish to refer to Section 4.3 to see how to select data from the screen.
 
 ### vtkRenderWindowInteractor
 
 vtkRenderWindowInteractor provides a platform-independent interaction mechanism for mouse/key/ time events. Platform specific subclasses intercept messages from the windowing system that occur within the render window and convert them to platform independent events. Specific classes may observe the interactor for these user events and respond to them. One such class is vtkInteractorObserver. (Remember that multiple renderers can draw into a rendering window and that the renderer draws into a viewport within the render window. Interactors support multiple renderers in a render window). We've seen how to use vtkRenderWindowInteractor previously, here's a recapitulation.
 
-```tcl
-vtkRenderWindowInteractor iren
-iren SetRenderWindow renWin
-iren AddObserver UserEvent {wm deiconify .vtkInteract}
+```python
+from vtkmodules.vtkRenderingUI import vtkRenderWindowInteractor
+
+interactor = vtkRenderWindowInteractor()
+interactor.SetRenderWindow(render_window)
+interactor.AddObserver("UserEvent", my_callback)
 ```
 
-Apart from providing a platform independent interaction, vtkRenderWindowInteractor also provides functionality for frame rate control. The class maintains a notion of two kinds of requested frame rates: “DesiredUpdateRate” and “StillUpdateRate”. The rationale for this is that during interaction, one is willing to sacrifice some amount of rendering quality for better interactivity. Hence, the interactor (to be more exact the interactor styles as you will see in the next section), sets the target frame rate to the DesiredUpdateRate during interaction. After interaction, the target frame rate is set back to the StillUpdateRate. Typically the DesiredUpdateRate is much larger than the StillUpdateRate. If a vtkLODActor is present in the scene (“Level-Of-Detail Actors” on page55), it will then switch to a level of detail low enough to meet the target rate. A volume mapper (See “Volume Rendering” on page139.) can cast fewer rays, or skip texture planes to meet the desired frame rate. Users may set these rates using the methods SetDesiredUpdateRate() and SetStillUpdateRate() on the interactor.
+Apart from providing a platform independent interaction, vtkRenderWindowInteractor also provides functionality for frame rate control. The class maintains a notion of two kinds of requested frame rates: “DesiredUpdateRate” and “StillUpdateRate”. The rationale for this is that during interaction, one is willing to sacrifice some amount of rendering quality for better interactivity. Hence, the interactor (to be more exact the interactor styles as you will see in the next section), sets the target frame rate to the DesiredUpdateRate during interaction. After interaction, the target frame rate is set back to the StillUpdateRate. Typically the DesiredUpdateRate is much larger than the StillUpdateRate. If a vtkLODActor is present in the scene (see Section 4.4), it will then switch to a level of detail low enough to meet the target rate. A volume mapper (see Chapter 7) can cast fewer rays, or skip texture planes to meet the desired frame rate. Users may set these rates using the methods SetDesiredUpdateRate() and SetStillUpdateRate() on the interactor.
 
 ### Interactor Styles
 
@@ -24,12 +26,15 @@ Everyone has a favorite way of interacting with data. There are two distinctly d
 
 ### vtkInteractorStyle
 
-The class vtkRenderWindowInteractor can support different interaction styles. When you type “t” or “j” in the interactor (see the previous section) you are changing between trackball and joystick interaction styles. The way this works is that vtkRenderWindowInteractor translates window-system specific events it receives (e.g., mouse button press, mouse motion, keyboard events) to VTK events such as MouseMoveEvent, StartEvent, and so on. (See “User Methods, Observers, and Commands” on page29.) Different styles then observe particular events and perform the action(s) appropriate to the event, typically some form of camera manipulation. To set the style, use the vtkRenderWindowInteractor's SetInteractorStyle() method. For example:
+The class vtkRenderWindowInteractor can support different interaction styles. When you type “t” or “j” in the interactor (see the previous section) you are changing between trackball and joystick interaction styles. The way this works is that vtkRenderWindowInteractor translates window-system specific events it receives (e.g., mouse button press, mouse motion, keyboard events) to VTK events such as MouseMoveEvent, StartEvent, and so on. (See Section 3.8.) Different styles then observe particular events and perform the action(s) appropriate to the event, typically some form of camera manipulation. To set the style, use the vtkRenderWindowInteractor's SetInteractorStyle() method. For example:
 
-```tcl
-vtkInteractorStyleFlight flightStyle
-vtkRenderWindowInteractor iren
-iren SetInteractorStyle flightStyle
+```python
+from vtkmodules.vtkInteractionStyle import vtkInteractorStyleFlight
+from vtkmodules.vtkRenderingUI import vtkRenderWindowInteractor
+
+flight_style = vtkInteractorStyleFlight()
+interactor = vtkRenderWindowInteractor()
+interactor.SetInteractorStyle(flight_style)
 ```
 
 A variety of interactor styles are provided with the toolkit. Below, we list some of the interactor styles found in the toolkit: 
@@ -39,54 +44,73 @@ A variety of interactor styles are provided with the toolkit. Below, we list som
 - vtkInteractorStyleJoystickCamera - Manipulate the camera in a joystick style. 
 - vtkInteractorStyleFlight - Provides flight motion routines. It is suitable for a fly through interaction (for instance through the colon in virtual colonoscopy), or a fly over (for instance over a terrain, or height field). 
 - vtkInteractorStyleImage - The style is specially designed to work with images that are being rendered with vtkImageActor. Its interactions support window/level etc. 
-- vtkInteractorStyleRubberbandZoom - This interactor style allows the user to draw a rectangle (rubberband) in the render window and zooms the camera appropriately into the selected region. 
-- vtkGeoInteractorStyle - Tailored for interaction with a geographic view (for instance a globe). Its interaction capabilities include orbit, zoom and tilt. It also features a compass widget for changing view parameters. 
-- vtkInteractorStyleTreeMapHover - works with a tree map (See “Information Visualization” on page163.). Interactions allow 2D pan/zoom and balloon annotations for nodes on the tree map, node selection capabilities etc. 
-- vtkInteractorStyleAreaSelectHover - Similar to vtkInteractorStyleTreeMapHover except that it works with an area layout (See “Area Layouts” on page175.) 
+- vtkInteractorStyleRubberbandZoom - This interactor style allows the user to draw a rectangle (rubberband) in the render window and zooms the camera appropriately into the selected region.
+- vtkInteractorStyleTreeMapHover - works with a tree map (see Chapter 8). Interactions allow 2D pan/zoom and balloon annotations for nodes on the tree map, node selection capabilities etc.
+- vtkInteractorStyleAreaSelectHover - Similar to vtkInteractorStyleTreeMapHover except that it works with an area layout (see Chapter 8). 
 - vtkInteractorStyleUnicam - Single mouse button, context sensitive interaction.
 
 ### Adding vtkRenderWindowInteractor
 
-Observers While a variety of interactor styles are available in VTK, you may prefer to create your own custom style to meet the needs of a particular application. In C++ the natural approach is to subclass vtkInteractorStyle. (See “vtkRenderWindowInteractor” on page255.) However, in an interpreted language (e.g., Tcl, Python, or Java), this is difficult to do. For interpreted languages the simplest approach is to use observers to define particular interaction bindings. (See “User Methods, Observers, and Commands” on page29.) The bindings can be managed in any language that VTK supports, including C++, Tcl, Python, and Java. An example of this is found in the Tcl code VTK/Examples/GUI/Tcl/ CustomInteraction.tcl, which defines bindings for a simple Tcl application. Here's an excerpt to give you an idea of what's going on.
+Observers While a variety of interactor styles are available in VTK, you may prefer to create your own custom style to meet the needs of a particular application. In C++ the natural approach is to subclass vtkInteractorStyle. However, in an interpreted language (e.g., Python or Java), this is difficult to do. For interpreted languages the simplest approach is to use observers to define particular interaction bindings. (See Section 3.8.) The bindings can be managed in any language that VTK supports, including C++, Python, and Java. Here is an example of defining custom interaction bindings in Python.
 
-```tcl
-vtkRenderWindowInteractor iren
-iren SetInteractorStyle ""
-iren SetRenderWindow renWin
+```python
+from vtkmodules.vtkRenderingUI import vtkRenderWindowInteractor
 
-# Add the observers to watch for particular events # These invoke Tcl procedures
-set Rotating 0
-set Panning 0
-set Zooming 0
-iren AddObserver LeftButtonPressEvent {global Rotating; set Rotating 1}
-iren AddObserver LeftButtonReleaseEvent \
-{global Rotating; set Rotating 0}
-iren AddObserver MiddleButtonPressEvent {global Panning; set Panning 1}
-iren AddObserver MiddleButtonReleaseEvent \
-{global Panning; set Panning 0}
+interactor = vtkRenderWindowInteractor()
+interactor.SetInteractorStyle(None)
+interactor.SetRenderWindow(render_window)
 
-iren AddObserver RightButtonPressEvent {global Zooming; set Zooming 1}
-iren AddObserver RightButtonReleaseEvent {global Zooming; set Zooming 0}
-iren AddObserver MouseMoveEvent MouseMove
-iren AddObserver KeyPressEvent Keypress
-proc MouseMove {} {
-set xypos [iren GetEventPosition]
-set x [lindex $xypos 0]
-set y [lindex $xypos 1]
-}
-proc Keypress {} {
-set key [iren GetKeySym]
-if { $key == "e" } {
-vtkCommand DeleteAllObjects
+# Add observers to watch for particular events
+rotating = False
+panning = False
+zooming = False
 
-exit
-}
-...
+def left_press(obj, event):
+    global rotating
+    rotating = True
 
-}
+def left_release(obj, event):
+    global rotating
+    rotating = False
+
+def middle_press(obj, event):
+    global panning
+    panning = True
+
+def middle_release(obj, event):
+    global panning
+    panning = False
+
+def right_press(obj, event):
+    global zooming
+    zooming = True
+
+def right_release(obj, event):
+    global zooming
+    zooming = False
+
+def mouse_move(obj, event):
+    x, y = obj.GetEventPosition()
+    # Handle rotation, panning, or zooming based on state
+    ...
+
+def keypress(obj, event):
+    key = obj.GetKeySym()
+    if key == "e":
+        obj.GetRenderWindow().Finalize()
+        exit()
+
+interactor.AddObserver("LeftButtonPressEvent", left_press)
+interactor.AddObserver("LeftButtonReleaseEvent", left_release)
+interactor.AddObserver("MiddleButtonPressEvent", middle_press)
+interactor.AddObserver("MiddleButtonReleaseEvent", middle_release)
+interactor.AddObserver("RightButtonPressEvent", right_press)
+interactor.AddObserver("RightButtonReleaseEvent", right_release)
+interactor.AddObserver("MouseMoveEvent", mouse_move)
+interactor.AddObserver("KeyPressEvent", keypress)
 ```
 
-Note that a key step in this example is disabling the default interaction style by invoking SetInteractionStyle(""). Observers are then added to watch for particular events which are tied to the appropriate Tcl procedures. This example is a simple way to add bindings from a Tcl script. If you would like to create a full GUI using Tcl/Tk, then use the vtkTkRenderWidget, and refer to “Tcl/Tk” on page433 for more details.
+Note that a key step in this example is disabling the default interaction style by invoking SetInteractorStyle(None). Observers are then added to watch for particular events which are tied to the appropriate callback functions.
 
 ## 13.2 Widgets
 
@@ -115,7 +139,7 @@ handleWidget->EnabledOn();
 While each widget provides different functionality and offers a different API, the 3D widgets are similar in how they are set up and used. The general procedure is as follows.
 1. Instantiate the widget
 2. Specify the render window interactor that the widget will observe for user events
-3. Create callbacks (i.e., commands) as necessary using the Command/Observer mechanism.See “User Methods, Observers, and Commands” on page29. The widgets typically invoke the generic events indicating that they are being interacted with and also widget specific events during interaction, such as StartInteractionEvent, InteractionEvent, and EndInteractionEvent. The user typically observes these events to update data, visualization parameters or the application's user interface.
+3. Create callbacks (i.e., commands) as necessary using the Command/Observer mechanism.See Section 3.8. The widgets typically invoke the generic events indicating that they are being interacted with and also widget specific events during interaction, such as StartInteractionEvent, InteractionEvent, and EndInteractionEvent. The user typically observes these events to update data, visualization parameters or the application's user interface.
 4. Create the appropriate representation and provide it to the widget using SetRepresentation, or use the default representation provided by the widget. 
 5. Finally the widget must be enabled, so that it is visible on the scene. By default, a keypress “i” will enable the widget and it will appear in the scene.
 
@@ -270,7 +294,7 @@ widget->SetRepresentation(rep);
 
 *Bi-dimensional Widget*
 
-The orthogonal constraint on the two lines limits how the four end points can be positioned. The first two points can be placed arbitrarily to define the first line (similar to vtkDistanceWidget). The placement of the third point is limited by the finite extent of the first line. As the third point is placed, vtkBiDimensionalWidget the fourth point is placed on the opposite side of the first line. Once the third point is placed, the second line is defined since the fourth point is defined at the same time, but the fourth point can be moved along the second line (i.e., maintaining the orthogonal relationship between the two lines). Once defined, any of the four points can be moved along their constraint line. Also, each line can be translated along the other line (in an orthogonal direction), and the whole bi-dimensional widget can be rotated about its center point. Finally, by selecting the point where the two orthogonal axes intersect the entire widget can be translated in any direction.
+The orthogonal constraint on the two lines limits how the four end points can be positioned. The first two points can be placed arbitrarily to define the first line (similar to vtkDistanceWidget). The placement of the third point is limited by the finite extent of the first line. As the third point is placed, the fourth point is placed on the opposite side of the first line. Once the third point is placed, the second line is defined since the fourth point is defined at the same time, but the fourth point can be moved along the second line (i.e., maintaining the orthogonal relationship between the two lines). Once defined, any of the four points can be moved along their constraint line. Also, each line can be translated along the other line (in an orthogonal direction), and the whole bi-dimensional widget can be rotated about its center point. Finally, by selecting the point where the two orthogonal axes intersect the entire widget can be translated in any direction.
 
 Placement of any point results in a special PlacePointEvent invocation so that special operations may be performed to reposition the point. Motion of any point, moving the lines, or rotating the widget cause InteractionEvents to be invoked. Note that the widget has two fundamental modes: a define mode (when initially placing the points) and a manipulate mode (after the points are placed). Line translation and rotation are only possible in manipulate mode.
 
@@ -297,7 +321,7 @@ vtkHandleRepresentation is the abstract superclass for the handle's many represe
 ```cpp
 vtkHandleWidget *widget = vtkHandleWidget::New();
 vtkPointHandleRepresentation3D *rep =
-vtkPointHandleReprentation3D::New()
+vtkPointHandleRepresentation3D::New()
 widget->SetRepresentation(rep);
 ```
 
@@ -330,7 +354,7 @@ vtkImageActorPointPlacer *placer = vtkImageActorPointPlacer::New();
 placer->SetImageActor( imageActor );
 ```
 
-**vtkLineWidget2.** The class vtkLineWidget2 allows the define and manipulate a finite straight line in 3D space. The line can be picked at its endpoints, (represented by instances of vtkHandleWidget) to orient and stretch the line. It can also be picked anywhere along the line so as to translate it in the scene. Much like vtkHandleWidget, the movement of the endpoints or the center can be constrained to one of the axes by dragging with the shift key depressed. The line can be scaled about its center using the right mouse button. By moving the mouse “up” the render window the line will be made bigger; by moving “down” the render window the line gets smaller. A common use of the line widget is to probe (“Probing” on page100) and plot data (“X-Y Plots” on page66) or produce vtkLineWidget2 streamlines (“Streamlines” on page95) or stream surfaces (“Stream Surfaces” on page97). vtkLineRepresentation provides the geometry for the line widget. One may also enable annotation of the length of the line. The widget invokes an InteractionEvent during the manipulation of the line and an EndInteractionEvent after interaction, allowing users to respond if necessary.
+**vtkLineWidget2.** The class vtkLineWidget2 allows the define and manipulate a finite straight line in 3D space. The line can be picked at its endpoints, (represented by instances of vtkHandleWidget) to orient and stretch the line. It can also be picked anywhere along the line so as to translate it in the scene. Much like vtkHandleWidget, the movement of the endpoints or the center can be constrained to one of the axes by dragging with the shift key depressed. The line can be scaled about its center using the right mouse button. By moving the mouse “up” the render window the line will be made bigger; by moving “down” the render window the line gets smaller. A common use of the line widget is to probe (see Section 5.6) and plot data (see Section 4.8) or produce streamlines (see Section 5.5) or stream surfaces (see Section 5.5). vtkLineRepresentation provides the geometry for the line widget. One may also enable annotation of the length of the line. The widget invokes an InteractionEvent during the manipulation of the line and an EndInteractionEvent after interaction, allowing users to respond if necessary.
 
 ![Line](images/line.png)
 
@@ -359,12 +383,12 @@ lineWidget->AddObserver(vtkCommand::InteractionEvent,myCallback);
 
 *Plane Widget*
 
-Once selected using middle mouse, moving the mouse in the direction of the normal translates the plane in the direction of the normal; moving in the direction opposite the normal translates the plane in the direction opposite the normal. Scaling (about the center of the plane) is achieved by using the right mouse button, dragging “up” the render window to make the plane bigger; and “down” to make it smaller. The public API of the widget also allows the user to change the property of the plane and the handle. One can also constrain the plane normal to one of the coordinate axes, as is shown in the code snippet below. The widget invokes an InteractionEvent during manipulation and an EndInteractionEvent after interaction. The followvtkPlaneWidget ing excerpt from Widgets/Testing/Cxx/TestPlaneWidget.cxx illustrates the usage of this widget.
+Once selected using middle mouse, moving the mouse in the direction of the normal translates the plane in the direction of the normal; moving in the direction opposite the normal translates the plane in the direction opposite the normal. Scaling (about the center of the plane) is achieved by using the right mouse button, dragging “up” the render window to make the plane bigger; and “down” to make it smaller. The public API of the widget also allows the user to change the property of the plane and the handle. One can also constrain the plane normal to one of the coordinate axes, as is shown in the code snippet below. The widget invokes an InteractionEvent during manipulation and an EndInteractionEvent after interaction. The following excerpt from Widgets/Testing/Cxx/TestPlaneWidget.cxx illustrates the usage of this widget.
 
 ```cpp
 vtkPlaneWidget *planeWidget = vtkPlaneWidget::New();
 planeWidget->SetInteractor(iren);
-planeWidget->SetInput(pl3d->GetOutput());
+planeWidget->SetInputData(pl3d->GetOutput());
 planeWidget->NormalToXAxisOn();
 planeWidget->SetResolution(20);
 planeWidget->SetRepresentationToOutline();
@@ -372,7 +396,7 @@ planeWidget->PlaceWidget();
 planeWidget->AddObserver(vtkCommand::InteractionEvent,myCallback);
 ```
 
-**vtkImplicitPlaneWidget2.** This widget can be used to orient and position an unbounded plane. An implicit function as well as a polygonal output can be queried from this widget. The widget consists of four parts: 1) a plane contained in a 2) bounding box, with a 3) plane normal, which is rooted at a 4) point on the plane. The widget may be scaled using the right mouse button. The normal can be picked and dragged to orient the plane. The root of the normal can also be translated to change the origin of the normal. The entire widget may be translated using the middle mouse button. The polygonal output is created by clipping the plane with a bounding box. The vtkImplicitPlaneWidget2 widget is often used to “cutting” and “clipping”. One can change various properties on the plane. The SetTubing can be used to display a tubed outline of the plane. This excerpt from Widgets/Testing/Cxx/ TestImplicitPlaneWidget2.cxx illustrates the use of vtkImplicitPlaneWidget2 along with an instance of vtkImplicitPlaneRepresentation
+**vtkImplicitPlaneWidget2.** This widget can be used to orient and position an unbounded plane. An implicit function as well as a polygonal output can be queried from this widget. The widget consists of four parts: 1) a plane contained in a 2) bounding box, with a 3) plane normal, which is rooted at a 4) point on the plane. The widget may be scaled using the right mouse button. The normal can be picked and dragged to orient the plane. The root of the normal can also be translated to change the origin of the normal. The entire widget may be translated using the middle mouse button. The polygonal output is created by clipping the plane with a bounding box. The vtkImplicitPlaneWidget2 widget is often used for cutting and clipping (see Section 5.6). One can change various properties on the plane. The SetTubing can be used to display a tubed outline of the plane. This excerpt from Widgets/Testing/Cxx/ TestImplicitPlaneWidget2.cxx illustrates the use of vtkImplicitPlaneWidget2 along with an instance of vtkImplicitPlaneRepresentation
 
 ```cpp
 vtkImplicitPlaneRepresentation *rep =
@@ -389,7 +413,7 @@ planeWidget->AddObserver(vtkCommand::InteractionEvent,myCallback);
 
 *Plane Widget*
 
-**vtkBoxWidget2.** This widget orients and positions a bounding box. The widget produces an implicit function and a transformation matrix. The widget is used along with an instance of a vtkBoxRepresentation. The representation represents box with seven handles: one on each of the six faces, plus a center handle. The hexahedron has interior face angles of 90 degrees, ie the faces are orthogonal. Each of the 7 handles that can be moused on and manipulated. A bounding box outline is shown, the “faces” of which can be selected for object scaling. During interaction, the corresponding face or the handle becomes highlighted, providing enhanced visual cues. One can use the PlaceWidget() method to initially position the widget. By grabbing the six face handles (using the vtkBoxWidget2 left mouse button), faces can be moved. By grabbing the center handle (with the left mouse button), the entire hexahedron can be translated. (Translation can also be employed by using the “shift-left-mouse-button” combination inside of the widget.) Scaling is achieved by using the right mouse button; “up” the render window (makes the widget bigger) or “down” the render window (makes the widget smaller). The vtkBoxWidget2 may be used to select, cut, clip, or perform any other operation that depends on an implicit function (use the GetPlanes() method on the representation); or it can be used to transform objects using a linear transformation (use the GetTransform() method on the representation). The widget is also typically used to define a region of interest, which may be used for annotation or for cropping a dataset. The widget invokes a StartInteractionEvent, InteractionEvent, and EndInteractionEvent events before, during and after interaction. One can turn on/off the display of the outline between the handles using the SetOutlineCursorWires in vtkBoxRepresentation. The box widget is used to transform vtkProp3D’s and sub-classes (“Transforming Data” on page70) or to cut (“Cutting” on page98) or clip data (“Clip Data” on page110).
+**vtkBoxWidget2.** This widget orients and positions a bounding box. The widget produces an implicit function and a transformation matrix. The widget is used along with an instance of a vtkBoxRepresentation. The representation represents box with seven handles: one on each of the six faces, plus a center handle. The hexahedron has interior face angles of 90 degrees, ie the faces are orthogonal. Each of the 7 handles that can be moused on and manipulated. A bounding box outline is shown, the “faces” of which can be selected for object scaling. During interaction, the corresponding face or the handle becomes highlighted, providing enhanced visual cues. One can use the PlaceWidget() method to initially position the widget. By grabbing the six face handles (using the left mouse button), faces can be moved. By grabbing the center handle (with the left mouse button), the entire hexahedron can be translated. (Translation can also be employed by using the “shift-left-mouse-button” combination inside of the widget.) Scaling is achieved by using the right mouse button; “up” the render window (makes the widget bigger) or “down” the render window (makes the widget smaller). The vtkBoxWidget2 may be used to select, cut, clip, or perform any other operation that depends on an implicit function (use the GetPlanes() method on the representation); or it can be used to transform objects using a linear transformation (use the GetTransform() method on the representation). The widget is also typically used to define a region of interest, which may be used for annotation or for cropping a dataset. The widget invokes a StartInteractionEvent, InteractionEvent, and EndInteractionEvent events before, during and after interaction. One can turn on/off the display of the outline between the handles using the SetOutlineCursorWires in vtkBoxRepresentation. The box widget is used to transform vtkProp3D's and sub-classes (see Section 4.5) or to cut (see Section 5.6) or clip data (see Section 5.6).
 
 ![box](images/box.png)
 
@@ -427,7 +451,7 @@ myCallback->Transform = t;
 myCallback->Actor = maceActor;
 ```
 
-**vtkAffineWidget.** This widget provides support for interactively defining affine transformations (shear / rotation / scaling / translation). The widget used along with an instance of vtkAffineRepresentation. vtkAffineRepresentation2D is a concrete subclass of vtkAffineRepresentation to represent affine transformations in 2D. This representation's geometry consists of three parts: a box, a circle, and a cross. The box is used for scaling and shearing. The left mouse button can be used to stretch the box along one of the axes by clicking on the edges, or to stretch along both axes by picking the corner. vtkAffineWidget The circle is used for rotation. The central cross may be picked to achieve translation. During manipulation of the box, circle and cross respectively, the scale, angle or translation component of the affine transform can optionally displayed as accompanying annotation. All the geometry is drawn on the overlay plane by vtkAffineRepresentation maintaining a constant size (width and height) specified in terms of normalized viewport coordinates. The representation maintains a transformation matrix, which may be queried by users using the GetTransform() method, so as to apply transformations to underlying props or datasets. The transformations generated by this widget assume that the representation lies in the x-y plane. If this is not the case, the user is responsible for transforming this representation's matrix into the correct coordinate space (by judicious matrix multiplication). Note that the transformation matrix returned by GetTransform() is relative to the last PlaceWidget() invocation. (The PlaceWidget() method sets the origin around which rotation and scaling occurs the origin is the center point of the bounding box provided.). VTK/Widgets/Testing/Cxx/TestAffineWidget.cxx shows how the affine widget may be used to apply a transform to the underlying image. The widget invokes an InteractionEvent during interaction and an EndInteractionEvent after interaction.
+**vtkAffineWidget.** This widget provides support for interactively defining affine transformations (shear / rotation / scaling / translation). The widget used along with an instance of vtkAffineRepresentation. vtkAffineRepresentation2D is a concrete subclass of vtkAffineRepresentation to represent affine transformations in 2D. This representation's geometry consists of three parts: a box, a circle, and a cross. The box is used for scaling and shearing. The left mouse button can be used to stretch the box along one of the axes by clicking on the edges, or to stretch along both axes by picking the corner. The circle is used for rotation. The central cross may be picked to achieve translation. During manipulation of the box, circle and cross respectively, the scale, angle or translation component of the affine transform can optionally displayed as accompanying annotation. All the geometry is drawn on the overlay plane by vtkAffineRepresentation maintaining a constant size (width and height) specified in terms of normalized viewport coordinates. The representation maintains a transformation matrix, which may be queried by users using the GetTransform() method, so as to apply transformations to underlying props or datasets. The transformations generated by this widget assume that the representation lies in the x-y plane. If this is not the case, the user is responsible for transforming this representation's matrix into the correct coordinate space (by judicious matrix multiplication). Note that the transformation matrix returned by GetTransform() is relative to the last PlaceWidget() invocation. (The PlaceWidget() method sets the origin around which rotation and scaling occurs the origin is the center point of the bounding box provided.). VTK/Widgets/Testing/Cxx/TestAffineWidget.cxx shows how the affine widget may be used to apply a transform to the underlying image. The widget invokes an InteractionEvent during interaction and an EndInteractionEvent after interaction.
 
 ![affine](images/affine.png)
 
@@ -463,7 +487,7 @@ widget->AddObserver(vtkCommand::InteractionEvent,acbk);
 widget->AddObserver(vtkCommand::EndInteractionEvent,acbk);
 ```
 
-**vtkParallelopipedWidget** A vtkParallelopipedWidget can be used interactively manipulate a parallelopiped in 3D. It is meant to be used along with an instance of vtkParallelopipedRepresentation. The parallelopiped is represented by 8 handles and 6 faces. The handles can be picked and dragged so as to manipulate the parallelopiped. The handles are instances of vtkHandleWidget, represented as spheres (vtkSphereHandleRepresentation). Left clicking on a handle and dragging it moves the handle in space, the handles along faces shared by vtkParallelopipedWidget this handle may also move so as to maintain topology as a parallelopiped. Dragging a handle with the shift button pressed resizes the parallelopiped along an axis.The parallelopiped widget also has a special mode, designed for probing the underlying data and displaying a cut through it. By ctrl-left-click on a handle, it buckles inwards to carve a “chair” out of the parallelopiped. In this mode, the parallelopiped has 14 handles and 9 faces. These handles can again be picked to manipulate the parallelopiped or the depression of the chair. The following excerpt from VTK/Widgets/Testing/Cxx/TestParallelopipedWidget.cxx illustrates the use of the vtkParallelopipedWidget.
+**vtkParallelopipedWidget** A vtkParallelopipedWidget can be used interactively manipulate a parallelopiped in 3D. It is meant to be used along with an instance of vtkParallelopipedRepresentation. The parallelopiped is represented by 8 handles and 6 faces. The handles can be picked and dragged so as to manipulate the parallelopiped. The handles are instances of vtkHandleWidget, represented as spheres (vtkSphereHandleRepresentation). Left clicking on a handle and dragging it moves the handle in space, the handles along faces shared by this handle may also move so as to maintain topology as a parallelopiped. Dragging a handle with the shift button pressed resizes the parallelopiped along an axis.The parallelopiped widget also has a special mode, designed for probing the underlying data and displaying a cut through it. By ctrl-left-click on a handle, it buckles inwards to carve a “chair” out of the parallelopiped. In this mode, the parallelopiped has 14 handles and 9 faces. These handles can again be picked to manipulate the parallelopiped or the depression of the chair. The following excerpt from VTK/Widgets/Testing/Cxx/TestParallelopipedWidget.cxx illustrates the use of the vtkParallelopipedWidget.
 
 ![parallel](images/parallelopiped.png)
 
@@ -480,7 +504,7 @@ rep->SetPlaceFactor( 0.5 );
 rep->PlaceWidget(parallelopipedPts);
 ```
 
-**vtkImagePlaneWidget.** This widget defines a plane in a 3D scene to reslice image volumes interactively. The plane orientation may be interactively defined. Additional functionality includes the ability to window-level the resliced data and defining the degree of interpolation while reslicing. Internally, the widget contains an instance of vtkImageReslice. This slices through the underlying volumetric image data based on the defined plane. The output of this class is texture mapped onto the plane, creating an “image plane widget”. Selecting the widget with the middle mouse button with and without holding the shift or control keys enables complex reslicing capablilites. A set of ‘margins’ (left, right, top, bottom) are shown as a set of plane-axes aligned lines. Without keyboard modifiers: selectvtkImagePlaneWidget ing towards the middle of the plane margins enables translation of the plane along its normal. Selecting one of the corners within the margins enables spinning around the plane’s normal at its center. Selecting within a margin allows rotating about the center of the plane around an axis aligned with the margin (i.e., selecting the left margin enables rotation around the plane’s local y-prime axis). With the control key modifier: margin selection enables edge translation (i.e., a constrained form of scaling). Selecting within the margins enables translation of the entire plane. With shift key modifier: uniform plane scaling is enabled. Moving the mouse up enlarges the plane while downward movement shrinks it. When selected the plane outline is highlighted to provide visual cues.
+**vtkImagePlaneWidget.** This widget defines a plane in a 3D scene to reslice image volumes interactively. The plane orientation may be interactively defined. Additional functionality includes the ability to window-level the resliced data and defining the degree of interpolation while reslicing. Internally, the widget contains an instance of vtkImageReslice. This slices through the underlying volumetric image data based on the defined plane. The output of this class is texture mapped onto the plane, creating an “image plane widget”. Selecting the widget with the middle mouse button with and without holding the shift or control keys enables complex reslicing capabilities. A set of ‘margins’ (left, right, top, bottom) are shown as a set of plane-axes aligned lines. Without keyboard modifiers: selecting towards the middle of the plane margins enables translation of the plane along its normal. Selecting one of the corners within the margins enables spinning around the plane’s normal at its center. Selecting within a margin allows rotating about the center of the plane around an axis aligned with the margin (i.e., selecting the left margin enables rotation around the plane’s local y-prime axis). With the control key modifier: margin selection enables edge translation (i.e., a constrained form of scaling). Selecting within the margins enables translation of the entire plane. With shift key modifier: uniform plane scaling is enabled. Moving the mouse up enlarges the plane while downward movement shrinks it. When selected the plane outline is highlighted to provide visual cues.
 
 ![image-plane](images/image-plane.png)
 
@@ -488,7 +512,7 @@ rep->PlaceWidget(parallelopipedPts);
 
 Window-level is achieved by using the right mouse button. Window-level values can be reset by shift + 'r' or control + 'r'. One can reset the camera by pressing 'r' or 'R'. The left mouse button can be used to query the underlying image data with a snap-to cross-hair cursor. The nearest point in the input image data to the mouse cursor generates the cross-hairs. With oblique slicing, this behavior may appear unsatisfactory. Text annotations display the window-level and image coordinates/data values. The text annotation may be toggled on and off with SetDisplayText. The widget invokes a StartInteractionEvent, InteractionEvent and EndInteractionEvent at the beginning, during and end of an interaction. The events StartWindowLevelEvent, WindowLevelEvent, EndWindowLevelEvent and ResetWindowLevelEvent are invoked during their corresponding actions. The 
 
-vtkImagePlaneWidget has additional public API that allow it to be used has several methods that can be used in conjunction with other VTK objects. The GetPolyData() method can be used to get the polygonal representation of the plane and can be used as input for other VTK objects. Some additional features of this class include the ability to control the properties of the widget. You can set the properties of: the selected and unselected representations of the plane's outline; the text actor via its vtkTextProperty; the cross-hair cursor. In addition there are methods to constrain the plane so that it is aligned along the x-y-z axes. Finally, one can specify the degree of interpolation used for reslicing the data: nearest neighbor, linear, and cubic. One can also choose between voxel centered or continuous cursor probing. With voxel centered probing, the cursor snaps to the nearest voxel and the reported cursor coordinates are extent based. With continuous probing, voxel data is interpolated using vtkDataSetAttributes' InterpolatePoint method and the reported coordinates are 3D spatial continuous. VTK/Widgets/Testing/Cxx/ImagePlaneWidget.cxx uses vtkImagePlaneWidget to interactively display axial, coronal and sagittal slices in a 3D volume. The following excerpt illustrates the usage of this widget.
+The vtkImagePlaneWidget has several methods that can be used in conjunction with other VTK objects. The GetPolyData() method can be used to get the polygonal representation of the plane and can be used as input for other VTK objects. Some additional features of this class include the ability to control the properties of the widget. You can set the properties of: the selected and unselected representations of the plane's outline; the text actor via its vtkTextProperty; the cross-hair cursor. In addition there are methods to constrain the plane so that it is aligned along the x-y-z axes. Finally, one can specify the degree of interpolation used for reslicing the data: nearest neighbor, linear, and cubic. One can also choose between voxel centered or continuous cursor probing. With voxel centered probing, the cursor snaps to the nearest voxel and the reported cursor coordinates are extent based. With continuous probing, voxel data is interpolated using vtkDataSetAttributes' InterpolatePoint method and the reported coordinates are 3D spatial continuous. VTK/Widgets/Testing/Cxx/ImagePlaneWidget.cxx uses vtkImagePlaneWidget to interactively display axial, coronal and sagittal slices in a 3D volume. The following excerpt illustrates the usage of this widget.
 
 ```cpp
 vtkImagePlaneWidget* planeWidgetX = vtkImagePlaneWidget::New();
@@ -500,7 +524,7 @@ planeWidgetX->GetPlaneProperty()->SetColor(1,0,0);
 planeWidgetX->SetTexturePlaneProperty(ipwProp);
 planeWidgetX->TextureInterpolateOff();
 planeWidgetX->SetResliceInterpolateToNearestNeighbour();
-planeWidgetX->SetInput(v16->GetOutput());
+planeWidgetX->SetInputData(v16->GetOutput());
 planeWidgetX->SetPlaneOrientationToXAxes();
 planeWidgetX->SetSliceIndex(32);
 planeWidgetX->DisplayTextOn();
@@ -525,7 +549,7 @@ rep->SetTrajectory(pd);
 
 ### Annotation widgets
 
-**vtkScalarBarWidget.** This class provides support for interactively manipulating the position, size, and orientation of a scalar bar. This widget is typically used to display a color legend in the scene. The legend is displayed in the overlay plane.vtkScalarBarWidget is meant to be used in conjunction with an instance of vtkScalarBarRepresentation. The widget allows the scalar bar to be resized, repositioned or reoriented. If the cursor is over an edge or a corner of the scalar bar it will change the cursor shape to a resize edge / corner shape. A drag with the left button then resizes the scalar bar. Similarly, if the cursor is within the scalar bar, it changes shape to indicate that it can be translated. The scalar bar can also be repositioned by pressing the middle mouse button. If the position of a scalar bar is moved to be close vtkScalarBarWidget to the center of one of the four edges of the viewport, then the scalar bar will change its orientation to align with that edge. This orientation is sticky in that it will stay that orientation until the position is moved close to another edge. The orientation may also be programmatically specified. The scalar bar itself text annotations can be queried or specified by retrieving or setting the scalar bar from the widget or the representation. One can then set the lookuptable or properties such as text annotations. One can also disable resizing by setting the SetResizable() method in the widget. Similarly one can disable repositioning using the SetSelectable() flag in the widget. This excerpt from VTK/Widgets/Testing/ Cxx/TestScalarBarWidget.cxx illustrates its usage.
+**vtkScalarBarWidget.** This class provides support for interactively manipulating the position, size, and orientation of a scalar bar. This widget is typically used to display a color legend in the scene. The legend is displayed in the overlay plane. vtkScalarBarWidget is meant to be used in conjunction with an instance of vtkScalarBarRepresentation. The widget allows the scalar bar to be resized, repositioned or reoriented. If the cursor is over an edge or a corner of the scalar bar it will change the cursor shape to a resize edge / corner shape. A drag with the left button then resizes the scalar bar. Similarly, if the cursor is within the scalar bar, it changes shape to indicate that it can be translated. The scalar bar can also be repositioned by pressing the middle mouse button. If the position of a scalar bar is moved to be close to the center of one of the four edges of the viewport, then the scalar bar will change its orientation to align with that edge. This orientation is sticky in that it will stay that orientation until the position is moved close to another edge. The orientation may also be programmatically specified. The scalar bar itself text annotations can be queried or specified by retrieving or setting the scalar bar from the widget or the representation. One can then set the lookuptable or properties such as text annotations. One can also disable resizing by setting the SetResizable() method in the widget. Similarly one can disable repositioning using the SetSelectable() flag in the widget. This excerpt from VTK/Widgets/Testing/ Cxx/TestScalarBarWidget.cxx illustrates its usage.
 
 ![scalar-bar](images/scalar-bar.png)
 
@@ -539,7 +563,7 @@ scalarWidget->GetScalarBarActor()->
 SetLookupTable(outlineMapper->GetLookupTable());
 ```
 
-**vtkCaptionWidget.** This widget provides support for interactively placing a textual caption on the 2D overlay plane, along with a leader (e.g., arrow) that points from the text to the point in the scene to be annotated. The caption is represented by a vtkCaptionRepresentation. One can interactively anchor the placement of the leader. The widget-representation internally contains an instance of vtkCaptionActor2D to display the caption. One can set the caption actor directly on the widget. The caption box automatically adjusts itself to fit the text based on its font size, justification and other text propervtkCaptionWidget ties. The widget invokes a StartInteractionEvent, InteractionEvent and EndInteractionEvent at the beginning, during and end of an interaction. When the caption text is selected, the widget emits a ActivateEvent that observers can watch for. This is useful for opening GUI dialogs to adjust font characteristics, etc. The following excerpt from VTK/Widgets/ Testing/Cxx/TestCaptionWidget.cxx shows how this widget is used to annotate a scene.
+**vtkCaptionWidget.** This widget provides support for interactively placing a textual caption on the 2D overlay plane, along with a leader (e.g., arrow) that points from the text to the point in the scene to be annotated. The caption is represented by a vtkCaptionRepresentation. One can interactively anchor the placement of the leader. The widget-representation internally contains an instance of vtkCaptionActor2D to display the caption. One can set the caption actor directly on the widget. The caption box automatically adjusts itself to fit the text based on its font size, justification and other text properties. The widget invokes a StartInteractionEvent, InteractionEvent and EndInteractionEvent at the beginning, during and end of an interaction. When the caption text is selected, the widget emits a ActivateEvent that observers can watch for. This is useful for opening GUI dialogs to adjust font characteristics, etc. The following excerpt from VTK/Widgets/ Testing/Cxx/TestCaptionWidget.cxx shows how this widget is used to annotate a scene.
 
 ![caption](images/caption.png)
 
@@ -564,7 +588,7 @@ widget->SetCaptionActor2D(rep);
 
 *Orientation Marker Widget*
 
-The widget listens to left mouse button and mouse movement events. It will change the cursor shape based on its location. If the cursor is over the overlay renderer, it will change the cursor shape to a SIZEALL shape. With a click followed by a drag, the orientation marker can be translated, (along with the overlay viewport). If the mouse cursor is near a corner, the cursor changes to a resize corner shape (e.g., SIZENW). With a click and a drag, the viewport, along with the orientation marker it contains is resized. The aspect ratio is maintained after releasing the left mouse button, to enforce the overlay renderer to be square, by making both sides equal to the minimum edge size. The widget also highlights itself when the mouse cursor is over vtkOrientationMarkerWidget it, by displaying an outline of the orientation marker.The widget requires an instance of an orientation marker prop to be set. The marker prop itself can be any subclass of vtkProp. Specifically, vtkAxesActor and vtkAnnoatedCubeActor are two classes that are designed to serve as orientation props. The former provides annotation in the form of annotated XYZ axes. The latter appears as a cube, with the 6 faces annotated with textures created from user specified text. A composite orientation marker can also be generated by adding instances of vtkAxesActor and vtkAnnoatedCubeActor to a vtkPropAssembly, which can then be set as the input orientation marker. The widget can be also be set up programmatically, in a non-interactive fashion by setting Interactive to Off and sizing/placing the overlay renderer in its parent viewport by calling the widget's SetViewport method. The following illustrates a typical usage; for a more complex use case see VTK/Widgets/Testing/Cxx/TestOrientationMarkerWidget.cxx.
+The widget listens to left mouse button and mouse movement events. It will change the cursor shape based on its location. If the cursor is over the overlay renderer, it will change the cursor shape to a SIZEALL shape. With a click followed by a drag, the orientation marker can be translated, (along with the overlay viewport). If the mouse cursor is near a corner, the cursor changes to a resize corner shape (e.g., SIZENW). With a click and a drag, the viewport, along with the orientation marker it contains is resized. The aspect ratio is maintained after releasing the left mouse button, to enforce the overlay renderer to be square, by making both sides equal to the minimum edge size. The widget also highlights itself when the mouse cursor is over it, by displaying an outline of the orientation marker. The widget requires an instance of an orientation marker prop to be set. The marker prop itself can be any subclass of vtkProp. Specifically, vtkAxesActor and vtkAnnotatedCubeActor are two classes that are designed to serve as orientation props. The former provides annotation in the form of annotated XYZ axes. The latter appears as a cube, with the 6 faces annotated with textures created from user specified text. A composite orientation marker can also be generated by adding instances of vtkAxesActor and vtkAnnotatedCubeActor to a vtkPropAssembly, which can then be set as the input orientation marker. The widget can be also be set up programmatically, in a non-interactive fashion by setting Interactive to Off and sizing/placing the overlay renderer in its parent viewport by calling the widget's SetViewport method. The following illustrates a typical usage; for a more complex use case see VTK/Widgets/Testing/Cxx/TestOrientationMarkerWidget.cxx.
 
 ```cpp
 vtkAnnotatedCubeActor* cube = vtkAnnotatedCubeActor::New();
@@ -596,7 +620,7 @@ widget->SetViewport( 0.0, 0.0, 0.4, 0.4 );
 widget->SetEnabled( 1 );
 ```
 
-**vtkBalloonWidget.** This widget is used to popup annotations when the mouse hovers over an actor for a specified time. The annotation may be text and/or an images annotation when the mouse hovers over an actor for a specified time. The widget keeps track of user chosen props by associating an instance of a vtkProp with an instance of a “balloon”. The balloon encapvtkBalloonWidget sulates annotations (text and/or images). The balloon is brought up with user specified properties near the vtkProp when the mouse cursor hovers over it for a specified delay. An instance of vtkBalloonRepresentation is used to draw the balloon. To use this widget, first specify an instance of vtkBalloonWidget and the representation. Then list all instances of vtkProp, a text string, and/or an instance of vtkImageData to be associated with each vtkProp. (Note that you can specify both text and an image, or just one or the other.) You may also wish to specify the hover delay. The widget invokes a WidgetActivateEvent before a balloon pops up, that observers can watch for. VTK/Widgets/Testing/Cxx/TestBalloonWidget.cxx illustrates a typical usage.
+**vtkBalloonWidget.** This widget is used to popup annotations when the mouse hovers over an actor for a specified time. The annotation may be text and/or an images annotation when the mouse hovers over an actor for a specified time. The widget keeps track of user chosen props by associating an instance of a vtkProp with an instance of a “balloon”. The balloon encapsulates annotations (text and/or images). The balloon is brought up with user specified properties near the vtkProp when the mouse cursor hovers over it for a specified delay. An instance of vtkBalloonRepresentation is used to draw the balloon. To use this widget, first specify an instance of vtkBalloonWidget and the representation. Then list all instances of vtkProp, a text string, and/or an instance of vtkImageData to be associated with each vtkProp. (Note that you can specify both text and an image, or just one or the other.) You may also wish to specify the hover delay. The widget invokes a WidgetActivateEvent before a balloon pops up, that observers can watch for. VTK/Widgets/Testing/Cxx/TestBalloonWidget.cxx illustrates a typical usage.
 
 ![balloon](images/balloon.png)
 
@@ -609,9 +633,9 @@ virtual void Execute(vtkObject *caller, unsigned long, void*)
 {
 vtkBalloonWidget *balloonWidget =
 reinterpret_cast<vtkBalloonWidget*>(caller);
-if ( balloonWidget->GetCurrentProp() != NULL )
+if ( balloonWidget->GetCurrentProp() != nullptr )
 {
-cout << "Prop selected\n";
+std::cout << "Prop selected\n";
 }
 }
 };
@@ -624,7 +648,7 @@ vtkBalloonWidget *widget = vtkBalloonWidget::New();
 widget->SetInteractor(iren);
 widget->SetRepresentation(rep);
 widget->SetTimerDuration( 3000 ); // hover delay in ms.
-widget->AddBalloon(sph,"This is a sphere",NULL);
+widget->AddBalloon(sph,"This is a sphere",nullptr);
 widget->AddBalloon(cyl,"This is a\ncylinder",image1->GetOutput());
 widget->AddBalloon(cone,"This is a\ncone,\na really big cone,\nyou
 wouldn't believe how big",image1->GetOutput());
@@ -632,7 +656,7 @@ vtkBalloonCallback *cbk = vtkBalloonCallback::New();
 widget->AddObserver(vtkCommand::WidgetActivateEvent,cbk);
 ```
 
-**vtkTextWidget.** This class provides support for interactively placing text on the 2D overlay plane. The text is defined by an instance of vtkTextActor. It derives from vtkBorderWidget and inherits its border selection and resizing capabilities. The text border may be selected with the left mouse button. A click and a drag resizes the border along a particular direction, determined by the corner or face along which the text boundary is selected. The text along with its boundary may also be translated using the selecting the text box near the center. One vtkTextWidget can disable resizing and moving by turning the Selectable flag on the widget. In addition, when the text is selected, the widget emits a WidgetActivateEvent that observers can watch for. This is useful for opening GUI dialogues to adjust font characteristics, etc. The widget also invokes a StartInteractionEvent, an InteractionEvent and an EndInteractionEvent prior to, during and after user interaction with the widget
+**vtkTextWidget.** This class provides support for interactively placing text on the 2D overlay plane. The text is defined by an instance of vtkTextActor. It derives from vtkBorderWidget and inherits its border selection and resizing capabilities. The text border may be selected with the left mouse button. A click and a drag resizes the border along a particular direction, determined by the corner or face along which the text boundary is selected. The text along with its boundary may also be translated using the selecting the text box near the center. One can disable resizing and moving by turning the Selectable flag on the widget. In addition, when the text is selected, the widget emits a WidgetActivateEvent that observers can watch for. This is useful for opening GUI dialogues to adjust font characteristics, etc. The widget also invokes a StartInteractionEvent, an InteractionEvent and an EndInteractionEvent prior to, during and after user interaction with the widget
 
 ![text](images/text.png)
 
@@ -690,7 +714,7 @@ interpolator->GetPolys()->AddItem( pd );
 rep->SetLineInterpolator(interpolator);
 ```
 
-Using vtkTerranContourLineInterpolator, one can draw contours on height fields, such as Digital Elevation Maps vtkTerrainContourLineInterpolator. This interpolator constrains the lines between control points to lie on the surface of the height field. One can also specify an offset for the lines, by using the SetHeightOffset method on the interpolator. The class internally uses a vtkProjectedTerrainPath to project a polyline on the surface. Various projection modes may be specified on the projector. This interpolator is meant to be used in conjunction with a vtkTerrainDataPointPlacer, which constrains the control point nodes to lie on the surface of the terrain. The following code snippet, from VTK/Widgets/Testing/Cxx/TerrainPolylineEditor.cxx illustrates how one may use this interpolator and point placer.
+Using vtkTerrainContourLineInterpolator, one can draw contours on height fields, such as Digital Elevation Maps vtkTerrainContourLineInterpolator. This interpolator constrains the lines between control points to lie on the surface of the height field. One can also specify an offset for the lines, by using the SetHeightOffset method on the interpolator. The class internally uses a vtkProjectedTerrainPath to project a polyline on the surface. Various projection modes may be specified on the projector. This interpolator is meant to be used in conjunction with a vtkTerrainDataPointPlacer, which constrains the control point nodes to lie on the surface of the terrain. The following code snippet, from VTK/Widgets/Testing/Cxx/TerrainPolylineEditor.cxx illustrates how one may use this interpolator and point placer.
 
 ```cpp
 vtkContourWidget *contourWidget = vtkContourWidget::New();
@@ -741,13 +765,13 @@ path->SetEdgeLengthWeight( 0.8 );
 path->SetImageWeight( 1.0 );
 ```
 
-**vtkImageTracerWidget.** This widget provides support to trace free form contours through a planar surface (i.e., manually tracing over image data). The user can click the left button over the image, hold and drag to draw a freehand line. Clicking the left button and releasing erases the widget line, if it exists, and repositions the first handle. A middle button click starts a snap drawn line. The line can be terminated by clicking the middle button while depressing the ctrl key. The contour loop being traced will be automatically closed when the user clicks the last cursor position within a specified tolerance to the first handle. The user can drag a handle (and its associated line segments) by clicking the right button on any handle that is part of a snap drawn line. If the path is open and the flag AutoClose is set to On, vtkImageTracerWidget the path can be closed by repositioning the first and last points over one another. A handle can be erased by pressing the ctrl key along with the right button on the handle. Again, the snap drawn line segments are updated. If the line was formed by continuous tracing, the line is deleted leaving one handle. A handle can be inserted by pressing the shift key and the right button on any snap drawn line segment. This will insert a handle at the cursor position. The line segment is split accordingly on either side of the cursor. One can disable interaction on the widget by using the SetInteraction method.
+**vtkImageTracerWidget.** This widget provides support to trace free form contours through a planar surface (i.e., manually tracing over image data). The user can click the left button over the image, hold and drag to draw a freehand line. Clicking the left button and releasing erases the widget line, if it exists, and repositions the first handle. A middle button click starts a snap drawn line. The line can be terminated by clicking the middle button while depressing the ctrl key. The contour loop being traced will be automatically closed when the user clicks the last cursor position within a specified tolerance to the first handle. The user can drag a handle (and its associated line segments) by clicking the right button on any handle that is part of a snap drawn line. If the path is open and the flag AutoClose is set to On, the path can be closed by repositioning the first and last points over one another. A handle can be erased by pressing the ctrl key along with the right button on the handle. Again, the snap drawn line segments are updated. If the line was formed by continuous tracing, the line is deleted leaving one handle. A handle can be inserted by pressing the shift key and the right button on any snap drawn line segment. This will insert a handle at the cursor position. The line segment is split accordingly on either side of the cursor. One can disable interaction on the widget by using the SetInteraction method.
 
 ![image-tracer](images/image-tracer.png)
 
 *Image Tracer Widget*
 
-Since the widget exists on a plane, (the handles, etc. are 2D glyphs), one must specify the plane on which the widget lies. This is done by specifying the projection normal vector, via SetProjectionNormal and the plane's position via SetProjectionPosition. In the excerpt below, the projection normal is set to the X axis. The user can force snapping to the image data while tracing by using the flag SnapToImage. The user can change the handle and line properties, using the methods SetHandleProperty and SetLineProperty, or the SetSelectedHandleProperty and SetSelectedLineProperty. The widget invokes InteractionEvent and EndInteractionEvents. At this point, the current path may be retrieved as a polydata via the GetPath method, so that segmentation etc may be performed on the underlying image. The widget can also be initialized from a user specified set of control points, by using the method InitializeHandles. This takes a pointer to a vtkPoints instance, containing the list of points. VTK/Widgets/Testing/Cxx/TestImageTracerWidget.cxx illustrates how one may use the vkImageTracerWidget and a vtkSplineWidget to segment images. The following is an excerpt.
+Since the widget exists on a plane, (the handles, etc. are 2D glyphs), one must specify the plane on which the widget lies. This is done by specifying the projection normal vector, via SetProjectionNormal and the plane's position via SetProjectionPosition. In the excerpt below, the projection normal is set to the X axis. The user can force snapping to the image data while tracing by using the flag SnapToImage. The user can change the handle and line properties, using the methods SetHandleProperty and SetLineProperty, or the SetSelectedHandleProperty and SetSelectedLineProperty. The widget invokes InteractionEvent and EndInteractionEvents. At this point, the current path may be retrieved as a polydata via the GetPath method, so that segmentation etc may be performed on the underlying image. The widget can also be initialized from a user specified set of control points, by using the method InitializeHandles. This takes a pointer to a vtkPoints instance, containing the list of points. VTK/Widgets/Testing/Cxx/TestImageTracerWidget.cxx illustrates how one may use the vtkImageTracerWidget and a vtkSplineWidget to segment images. The following is an excerpt.
 
 ```cpp
 vtkImageTracerWidget* imageTracerWidget = vtkImageTracerWidget::New();
@@ -762,14 +786,14 @@ imageTracerWidget->SetProjectionNormalToXAxes();
 imageTracerWidget->SetProjectionPosition(imageActor1->
 GetBounds()[0]);
 imageTracerWidget->SetViewProp(imageActor1);
-imageTracerWidget->SetInput(shifter->GetOutput());
+imageTracerWidget->SetInputData(shifter->GetOutput());
 imageTracerWidget->SetInteractor(iren);
 imageTracerWidget->PlaceWidget();
 imageTracerWidget->SnapToImageOff();
 imageTracerWidget->AutoCloseOn();
 ```
 
-**vtkSplineWidget.** This is another widget that can be used to trace contours using a spline kernel. The widget predates the rearchitecturing efforts that culminated in vtkContourWidget. It derives from vtk3DWidget. The spline has handles, the number of which can be changed, plus it can be picked on the spline itself to translate or rotate it in the scene. The widget responds to the following keyboard and mouse modifiers. 1) left button down on and drag one of the spherical handles to change the shape of the spline: the handles act as “control points”. 2) left button or middle button down on a line segment forming the spline allows uniform translation of the widget. 3) ctrl + middle button down on the widget enables spinning of the widget about its center. 4) right button down vtkSplineWidget on the widget enables scaling of the widget. By moving the mouse “up” the render window the spline will be made bigger; by moving “down” the render window the widget will be made smaller. 5) ctrl key + right button down on any handle will erase it providing there will be two or more points remaining to form a spline. 6) shift key + right button down on any line segment will insert a handle onto the spline at the cursor position.
+**vtkSplineWidget.** This is another widget that can be used to trace contours using a spline kernel. The widget predates the rearchitecturing efforts that culminated in vtkContourWidget. It derives from vtk3DWidget. The spline has handles, the number of which can be changed, plus it can be picked on the spline itself to translate or rotate it in the scene. The widget responds to the following keyboard and mouse modifiers. 1) left button down on and drag one of the spherical handles to change the shape of the spline: the handles act as “control points”. 2) left button or middle button down on a line segment forming the spline allows uniform translation of the widget. 3) ctrl + middle button down on the widget enables spinning of the widget about its center. 4) right button down on the widget enables scaling of the widget. By moving the mouse “up” the render window the spline will be made bigger; by moving “down” the render window the widget will be made smaller. 5) ctrl key + right button down on any handle will erase it providing there will be two or more points remaining to form a spline. 6) shift key + right button down on any line segment will insert a handle onto the spline at the cursor position.
 
 ![spline](images/spline.png)
 
@@ -779,7 +803,7 @@ The vtkSplineWidget has several methods that can be used in conjunction with oth
 
 ```cpp
 vtkSplineWidget* spline = vtkSplineWidget::New();
-spline->SetInput(v16->GetOutput());
+spline->SetInputData(v16->GetOutput());
 spline->SetPriority(1.0);
 spline->KeyPressActivationOff();
 spline->PlaceWidget();
@@ -804,7 +828,7 @@ vtkPolyData* poly = vtkPolyData::New();
 spline->GetPolyData(poly);
 ```
 
-**vtkCheckerboardWidget.** The checkerboard widget is used to interactively control a checkerboard through an image actor displaying two images. This is useful in evaluating the quality of an image registration. The user can adjust the number of checkerboard divisions in each of the i-j directions in a 2D image. The widget is meant to be used in conjunction with a vtkCheckerboardRepresentation. When enabled, a frame appears around the vtkImageActor with sliders along each side of the frame. A total of 4 sliders are provided for the two checkerboards, along both the i and j directions. (This internally uses a vtkSliderRepresentation3D). The user can interactively adjust the sliders (see vtkSliderWidget) to the desired number of checkerboard subdivisions. The user can override the default slider representations by setting their own slider representations vtkCheckerboardWidget on the widget. The widget needs an instance of a vtkImageCheckerBoard which, in turn, takes two images as input to generate the checkerboard. The following example from VTK/Widgets/Testing/Cxx/TestCheckerboardWidget.cxx illustrates a typical usage.
+**vtkCheckerboardWidget.** The checkerboard widget is used to interactively control a checkerboard through an image actor displaying two images. This is useful in evaluating the quality of an image registration. The user can adjust the number of checkerboard divisions in each of the i-j directions in a 2D image. The widget is meant to be used in conjunction with a vtkCheckerboardRepresentation. When enabled, a frame appears around the vtkImageActor with sliders along each side of the frame. A total of 4 sliders are provided for the two checkerboards, along both the i and j directions. (This internally uses a vtkSliderRepresentation3D). The user can interactively adjust the sliders (see vtkSliderWidget) to the desired number of checkerboard subdivisions. The user can override the default slider representations by setting their own slider representations on the widget. The widget needs an instance of a vtkImageCheckerBoard which, in turn, takes two images as input to generate the checkerboard. The following example from VTK/Widgets/Testing/Cxx/TestCheckerboardWidget.cxx illustrates a typical usage.
 
 ![checkerboard](images/checkerboard.png)
 
@@ -812,11 +836,11 @@ spline->GetPolyData(poly);
 
 ```cpp
 vtkImageCheckerboard *checkers = vtkImageCheckerboard::New();
-checkers->SetInput(0,image1);
-checkers->SetInput(1,image2);
+checkers->SetInputData(0,image1);
+checkers->SetInputData(1,image2);
 checkers->SetNumberOfDivisions(10,6,1);
 vtkImageActor *checkerboardActor = vtkImageActor::New();
-checkerboardActor->SetInput(checkers->GetOutput());
+checkerboardActor->SetInputData(checkers->GetOutput());
 vtkCheckerboardRepresentation *rep =
 vtkCheckerboardRepresentation::New();
 rep->SetImageActor(checkerboardActor);
@@ -827,22 +851,22 @@ checkerboardWidget->SetInteractor(iren);
 checkerboardWidget->SetRepresentation(rep);
 ```
 
-**vtkRectilinearWipeWidget.** The vtkRectilinearWipeWidget displays a split view (2x2 checkerboard) of a pair of images allowing one to control the location of the split. This is useful in comparing two images, typically the registered image from the source image in an image registration pipeline. A rectilinear wipe is a 2x2 checkerboard pattern created by combining two separate images, where various combinations of the checker squares are possible. It must be noted that although the this widget appears similar in functionality to the checkerboard widget, there are important differences. Using this widget, the user can adjust the layout of the checker pattern, such as moving the center point, moving the horizontal separator, or moving the vertical separator. The location of the wipe (interface between the two images) can be changed to any point in the image, unlike the checkerboard widget, where one can interactively only change the resolution the checkerboard.?One can select the horizontal separator and the vertical separator by selecting the separator using the left mouse button. Dragging with the button depressed moves the separators. Selecting the center point allows you to move the horizontal and vertical separators simultaneously. To use this widget, specify its representation (by default the representation is an instance of vtkRectilinearWipeProp).
+**vtkRectilinearWipeWidget.** The vtkRectilinearWipeWidget displays a split view (2x2 checkerboard) of a pair of images allowing one to control the location of the split. This is useful in comparing two images, typically the registered image from the source image in an image registration pipeline. A rectilinear wipe is a 2x2 checkerboard pattern created by combining two separate images, where various combinations of the checker squares are possible. It must be noted that although the this widget appears similar in functionality to the checkerboard widget, there are important differences. Using this widget, the user can adjust the layout of the checker pattern, such as moving the center point, moving the horizontal separator, or moving the vertical separator. The location of the wipe (interface between the two images) can be changed to any point in the image, unlike the checkerboard widget, where one can interactively only change the resolution the checkerboard. One can select the horizontal separator and the vertical separator by selecting the separator using the left mouse button. Dragging with the button depressed moves the separators. Selecting the center point allows you to move the horizontal and vertical separators simultaneously. To use this widget, specify its representation (by default the representation is an instance of vtkRectilinearWipeProp).
 
 ![rectilinear-wipe](images/rectilinear-wipe.png)
 
 *Rectilinear Wipe Widget*
 
-The representation requires that you specify an instance of vtkImageRectilinearWipe and an instance of vtkImageActor. One can specify various “wipe” modes on the vtkImageRectilinearWipe instance. These modes determine how the two input images are combined together. The first is a quad mode, using the method SetWipeToQuad. In this mode, the inputs alternate horizontally and vertically. One can get a purely horizontal or a vertical wipe using SetWipeToHorizontal or SetWipeToVertical. In this mode, one half of the image comes from one input, and the other half from the other input. One can also get a corner wipe, with 3 inputs coming from one input image and one coming from the other input image, by using the methods SetWIpeToLowerLeft, SetWipeToLowerRight, SetWipeToUpperLeft and SetWipeToUpperRight. The following excerpt from VTK/Widgets/TestvtkRectilinearWipeWidget ing/Cxx/TestRectilinearWipeWidget.cxx illustrates its usage.
+The representation requires that you specify an instance of vtkImageRectilinearWipe and an instance of vtkImageActor. One can specify various “wipe” modes on the vtkImageRectilinearWipe instance. These modes determine how the two input images are combined together. The first is a quad mode, using the method SetWipeToQuad. In this mode, the inputs alternate horizontally and vertically. One can get a purely horizontal or a vertical wipe using SetWipeToHorizontal or SetWipeToVertical. In this mode, one half of the image comes from one input, and the other half from the other input. One can also get a corner wipe, with 3 inputs coming from one input image and one coming from the other input image, by using the methods SetWIpeToLowerLeft, SetWipeToLowerRight, SetWipeToUpperLeft and SetWipeToUpperRight. The following excerpt from VTK/Widgets/Testing/Cxx/TestRectilinearWipeWidget.cxx illustrates its usage.
 
 ```cpp
 vtkImageRectilinearWipe *wipe = vtkImageRectilinearWipe::New();
-wipe->SetInput(0,pad1->GetOutput());
-wipe->SetInput(1,pad2->GetOutput());
+wipe->SetInputData(0,pad1->GetOutput());
+wipe->SetInputData(1,pad2->GetOutput());
 wipe->SetPosition(100,256);
 wipe->SetWipeToQuad();
 vtkImageActor *wipeActor = vtkImageActor::New();
-wipeActor->SetInput(wipe->GetOutput());
+wipeActor->SetInputData(wipe->GetOutput());
 vtkRectilinearWipeWidget *wipeWidget = vtkRectilinearWipeWidget::New();
 vtkRectilinearWipeRepresentation *wipeWidgetRep=
     static_cast<vtkRectilinearWipeRepresentation *>(
@@ -853,7 +877,7 @@ wipeWidgetRep->GetProperty()->SetLineWidth(2.0);
 wipeWidgetRep->GetProperty()->SetOpacity(0.75);
 ```
 
-**vtkSeedWidget.** The vtkSeedWidget can be used to place multiple seed points. These are typically used for operations such as connectivity, segmentation, region growing, fiducials for image registration. This widget works in conjunction with an instance of a vtkSeedRepresentation (a subclass of vtkSeedRepresentation). The widget internally contains instances of vtkHandleWidget, to represent each seed. The handle widgets can, in turn, be represented by any subclass of vtkHandleRepresentation. vtkPointHandleRepresentation2D can be used to define seeds on a 2D overlay plane. vtkPointHandleRepresentation3D can be used to represent vtkSeedWidget seeds in a 3D scene. One can set the appropriate handle representation using the SetHandleRepresentation method in vtkSeedRepresentation.
+**vtkSeedWidget.** The vtkSeedWidget can be used to place multiple seed points. These are typically used for operations such as connectivity, segmentation, region growing, fiducials for image registration. This widget works in conjunction with an instance of a vtkSeedRepresentation (a subclass of vtkSeedRepresentation). The widget internally contains instances of vtkHandleWidget, to represent each seed. The handle widgets can, in turn, be represented by any subclass of vtkHandleRepresentation. vtkPointHandleRepresentation2D can be used to define seeds on a 2D overlay plane. vtkPointHandleRepresentation3D can be used to represent seeds in a 3D scene. One can set the appropriate handle representation using the SetHandleRepresentation method in vtkSeedRepresentation.
 
 ![seed](images/seed.png)
 
@@ -874,7 +898,7 @@ widget->SetRepresentation(rep); .
 
 ### Miscellaneous
 
-**vtkXYPlotWidget.** The vtkXYPlotWidget provides support for interactively manipulating the position, size, and orientation of a XY Plot. The widget is typically used to generate XY plots from one or more input data sets or field data. It internally contains an instance of a vtkXYPlotActor to perform to plotting functionality. One can retrieve this instance via GetXYPlotActor(). The x-axis values in vtkXYPlotActor are generated by taking the point ids, computing a cumulative arc length, or a normalized arc length. More than one vtkXYPlotWidget input data set can be specified to generate multiple plots. Alternatively, if field data is supplied as input, the class plots one component against another. The user must specify which component to use as the x-axis and which for the y-axis.
+**vtkXYPlotWidget.** The vtkXYPlotWidget provides support for interactively manipulating the position, size, and orientation of a XY Plot. The widget is typically used to generate XY plots from one or more input data sets or field data. It internally contains an instance of a vtkXYPlotActor to perform to plotting functionality. One can retrieve this instance via GetXYPlotActor(). The x-axis values in vtkXYPlotActor are generated by taking the point ids, computing a cumulative arc length, or a normalized arc length. More than one input data set can be specified to generate multiple plots. Alternatively, if field data is supplied as input, the class plots one component against another. The user must specify which component to use as the x-axis and which for the y-axis.
 
 ![xyplot](images/xyplot.png)
 
@@ -916,23 +940,23 @@ xyplot->SetLabelFormat("%-#6.2f");
 widget->SetEnabled(1);
 ```
 
-**vtkCompassWidget.** The compass widget provides support for interactively annotating and manipulating the orientation of a geo-spatial scene. The class also features zoom and tilt controls to position oneself in a geospatial view. This widget is used in the GeoVis views of VTK (“Geospatial Visualization” on page207). You may drag the heading wheel to change the widget's heading, and may pull the sliders to animate the zoom level or tilt of the widget. The widvtkCompassWidget get is most readily used in conjunction with a vtkGeoCamera, which retains camera positions in terms of the three parameters heading, tilt, and zoom. The following code shows how the widget's properties can be linked to a vtkGeoCamera in the event handler of the widget's InteractionEvent.
+**vtkCompassWidget.** The compass widget provides support for interactively annotating and manipulating orientation. The class also features zoom and tilt controls. You may drag the heading wheel to change the widget's heading, and may pull the sliders to animate the zoom level or tilt of the widget. The widget retains parameters for heading, tilt, and zoom that can be linked to camera controls in the event handler of the widget's InteractionEvent.
 
 ![compass](images/compass.png)
 
 *Compass Widget*
 
 ```cpp
-vtkGeoCamera* camera = vtkGeoCamera::New();
-vtkCompassWidget* widget = vtkCompassWidget::New();
+vtkNew<vtkCompassWidget> widget;
+widget->SetInteractor(iren);
 widget->CreateDefaultRepresentation();
 // In callback for InteractionEvent:
-camera->SetHeading(widget->GetHeading()*360.0);
-camera->SetTilt(widget->GetTilt());
-camera->SetDistance(widget->GetDistance());
+double heading = widget->GetHeading() * 360.0;
+double tilt = widget->GetTilt();
+double distance = widget->GetDistance();
 ```
 
-**vtkSliderWidget.** This widget provides functionality to manipulate a slider along a 1D range. The widget is meant to be used in conjunction with an instance of vtkSliderRepresentation. Two concrete representations are provtkSliderWidget vided with the toolkit: vtkSliderRepresentation2D and vtkSliderRepresentation3D. vtkSliderRepresentation2D, renders the slider on the overlay plane, while vtkSliderRepresentation3D renders the slider in 3D space. The range is represented by a tube, with a bead for the slider, and two caps at the ends delineating the lower and upper bounds. These properties may be changed by using the methods SetSliderWidth(), SetSliderLength(), SetTubeWidth(), SetEndCapLength() and SetEndCapWidth() on vtkSliderRepresentation. The properties of the caps / tubes, etc. can also be retrieved and modified. Similarly, the slider properties can also be modified both when its selected and when its not.
+**vtkSliderWidget.** This widget provides functionality to manipulate a slider along a 1D range. The widget is meant to be used in conjunction with an instance of vtkSliderRepresentation. Two concrete representations are provided with the toolkit: vtkSliderRepresentation2D and vtkSliderRepresentation3D. vtkSliderRepresentation2D, renders the slider on the overlay plane, while vtkSliderRepresentation3D renders the slider in 3D space. The range is represented by a tube, with a bead for the slider, and two caps at the ends delineating the lower and upper bounds. These properties may be changed by using the methods SetSliderWidth(), SetSliderLength(), SetTubeWidth(), SetEndCapLength() and SetEndCapWidth() on vtkSliderRepresentation. The properties of the caps / tubes, etc. can also be retrieved and modified. Similarly, the slider properties can also be modified both when its selected and when its not.
 
 ![slider](images/slider.png)
 
@@ -989,7 +1013,7 @@ sliderWidget->SetRepresentation(sliderRep);
 sliderWidget->SetAnimationModeToAnimate();
 ```
 
-**vtkCenteredSliderWidget.** PThe vtkCenteredSliderWidget is similar to the vtkSliderWidget. Its interactions however provide joystick based control on the slider. The widget is meant to be used in conjunction with an instance of vtkCenteredSliderRepresentation. When unselected, the slider always stays at the center. The user can select the slider by pressing the left button. The user can then drag and move the slider upwards or downwards with the button depressed, thereby increasing or decreasing the value the slider represents. The increase (or decrease) is proportional to both the time the the slider is depressed and held away from the center and to the vtkCenteredSliderWidget magnitude of deviation of the slider from its center. Upon releasing, the slider returns to the midpoint. The representation is used internally in vtkCompassRepresentation to represent the tilt and the distance values of the compass. Thus one can move the slider gently upwards to watch the camera tilt slowly forward. Alternatively one can yank the slider upwards to tilt the camera rapidly forward. The vtkCenteredSliderWidget like other widgets invokes StartInteractionEvent, InteractionEvent and EndInteractionEvent before, during and after user interaction. Usage of the centered slider widget is very similar to vtkSliderWidget. The GetValue() method on the widget can be used to query the value at any instant.
+**vtkCenteredSliderWidget.** The vtkCenteredSliderWidget is similar to the vtkSliderWidget. Its interactions however provide joystick based control on the slider. The widget is meant to be used in conjunction with an instance of vtkCenteredSliderRepresentation. When unselected, the slider always stays at the center. The user can select the slider by pressing the left button. The user can then drag and move the slider upwards or downwards with the button depressed, thereby increasing or decreasing the value the slider represents. The increase (or decrease) is proportional to both the time the the slider is depressed and held away from the center and to the magnitude of deviation of the slider from its center. Upon releasing, the slider returns to the midpoint. The representation is used internally in vtkCompassRepresentation to represent the tilt and the distance values of the compass. Thus one can move the slider gently upwards to watch the camera tilt slowly forward. Alternatively one can yank the slider upwards to tilt the camera rapidly forward. Like other widgets, the vtkCenteredSliderWidget invokes StartInteractionEvent, InteractionEvent and EndInteractionEvent before, during and after user interaction. Usage of the centered slider widget is very similar to vtkSliderWidget. The GetValue() method on the widget can be used to query the value at any instant.
 
 ![centered-slider](images/centered-slider.png)
 
@@ -1011,7 +1035,7 @@ widget->SetInteractor(iren);
 widget->SetRepresentation(rep);
 ```
 
-**vtkPlaybackWidget.** The vtkPlaybackWidget provides support for interactively controlling the playback of a serial stream of information (e.g., animation sequence, video). Controls for play, stop, advance one vtkPlaybackWidget step forward, advance one step backward, jump to beginning, and jump to end are available. The widget works in conjunction with an instance of vtkPlaybackRepresentation. The representation exists on the overlay plane and derives from vtkBorderWidget. It can be interactively resized or repositioned using the corners/edges or near the center. Six controls, in the form of icons, are provided by the playback widget. These controls allow for (a) Jumping to the beginning of the frame (b) Reverting one frame (c) Stop playback (d) Play (e) Jump forward one frame (f) Jump to the end. The implementation is left to the subclass. ie. Users are expected to subclass vtkPlaybackRepresentation to provide their own implementations for the 6 controls above. The following excerpt from VTK/Widgets/Testing/Cxx/TestPlaybackWidget.cxx illustrates a typical usage.
+**vtkPlaybackWidget.** The vtkPlaybackWidget provides support for interactively controlling the playback of a serial stream of information (e.g., animation sequence, video). Controls for play, stop, advance one step forward, advance one step backward, jump to beginning, and jump to end are available. The widget works in conjunction with an instance of vtkPlaybackRepresentation. The representation exists on the overlay plane and derives from vtkBorderWidget. It can be interactively resized or repositioned using the corners/edges or near the center. Six controls, in the form of icons, are provided by the playback widget. These controls allow for (a) Jumping to the beginning of the frame (b) Reverting one frame (c) Stop playback (d) Play (e) Jump forward one frame (f) Jump to the end. The implementation is left to the subclass. ie. Users are expected to subclass vtkPlaybackRepresentation to provide their own implementations for the 6 controls above. The following excerpt from VTK/Widgets/Testing/Cxx/TestPlaybackWidget.cxx illustrates a typical usage.
 
 ![playback](images/playback.png)
 
@@ -1025,12 +1049,12 @@ public:
 static vtkSubclassPlaybackRepresentation *New()
     {return new vtkSubclassPlaybackRepresentation;}
 
-virtual void Play() {cout << "play\n";}
-virtual void Stop() {cout << "stop\n";}
-virtual void ForwardOneFrame() {cout << "forward one frame\n";}
-virtual void BackwardOneFrame() {cout << "backward one frame\n";}
-virtual void JumpToBeginning() {cout << "jump to beginning\n";}
-virtual void JumpToEnd() {cout << "jump to end\n";}
+void Play() override {std::cout << "play\n";}
+void Stop() override {std::cout << "stop\n";}
+void ForwardOneFrame() override {std::cout << "forward one frame\n";}
+void BackwardOneFrame() override {std::cout << "backward one frame\n";}
+void JumpToBeginning() override {std::cout << "jump to beginning\n";}
+void JumpToEnd() override {std::cout << "jump to end\n";}
 };
 
 ...
@@ -1094,7 +1118,7 @@ shifter->SetInputConnection(v16->GetOutputPort());
 shifter->ReleaseDataFlagOff();
 shifter->Update();
 vtkImageActor* imageActor = vtkImageActor::New();
-imageActor->SetInput(shifter->GetOutput());
+imageActor->SetInputData(shifter->GetOutput());
 imageActor->VisibilityOn();
 imageActor->SetDisplayExtent(0, 63, 0, 63, 46, 46);
 imageActor->InterpolateOn();
@@ -1193,7 +1217,7 @@ n->GetProperties()->Set(vtkSelectionNode::EPSILON(), distance);
 
 The VTK data object, vtkMultiBlockDataset, can store a collection of datasets. A block selection allows you to specify which blocks to select. The selection list must be a vtkUnsignedIntArray.
 
-**Using the hardware selector.** VTK provides the class vtkHardwareSelector to assist you in generating selections from a rectangular region of the screen. This process is similar to AreaPicking (“Picking” on page59), but is able to return finer grained details about what is picked.
+**Using the hardware selector.** VTK provides the class vtkHardwareSelector to assist you in generating selections from a rectangular region of the screen. This process is similar to area picking (see Section 4.3), but is able to return finer grained details about what is picked.
 
 ```cpp
 vtkHardwareSelector* hs = vtkHardwareSelector::New();
@@ -1202,7 +1226,7 @@ hs->SetArea(xmin, ymin, xmax, ymax);
 vtkSelection* s = hs->Select();
 ```
 
-The hardware selector performs special rendering passes in order to determine which datasets in the renderer are selected, and which cells within those datasests are selected. Any cell that is rendered to at least one pixel within the selection area is inserted into the output selection. The output selection contains one vtkSelectionNode for each selected actor. These nodes are cell index selections by default, although the hardware selector can also be configured to select points. You can retrieve the pointer to the associated actor in the scene by accessing the PROP property of the selection node.
+The hardware selector performs special rendering passes in order to determine which datasets in the renderer are selected, and which cells within those datasets are selected. Any cell that is rendered to at least one pixel within the selection area is inserted into the output selection. The output selection contains one vtkSelectionNode for each selected actor. These nodes are cell index selections by default, although the hardware selector can also be configured to select points. You can retrieve the pointer to the associated actor in the scene by accessing the PROP property of the selection node.
 
 ![Figure 13-2](images/Figure_13-2.png)
 
@@ -1216,8 +1240,8 @@ vtkPolyData* pd = vtkPolyData::New();
 vtkSelection* s = vtkSelection::New();
 // Populate the selection here
 vtkExtractSelection* ex = vtkExtractSelection::New();
-ex->SetInput(0, pd);
-ex->SetInput(1, s);
+ex->SetInputData(0, pd);
+ex->SetInputData(1, s);
 ex->Update();
 vtkUnstructuredGrid* extracted = ex->GetOutput();
 ```
@@ -1227,5 +1251,5 @@ This will pass the data structurally unchanged to the output, with the same data
 
 ![Figure 13-3](images/Figure_13-3.png)
 
-*Figure 13–3 A portion of a vtkImageelement indicating whether it is selected or not. Data extracted by a frustum selection.*
+*Figure 13–3 A portion of a vtkImageData extracted by a frustum selection, with a boolean flag on each element indicating whether it is selected or not.*
 
