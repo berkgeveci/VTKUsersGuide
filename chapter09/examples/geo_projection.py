@@ -90,8 +90,8 @@ projections = [
     ("Eckert IV", "+proj=eck4 +R=1"),
     ("Winkel Tripel", "+proj=wintri +R=1"),
     ("Aitoff", "+proj=aitoff +R=1"),
-    ("Mercator", "+proj=merc +R=1"),
-    ("Lambert Azimuthal", "+proj=laea +R=1"),
+    ("Natural Earth", "+proj=natearth +R=1"),
+    ("Goode Homolosine", "+proj=goode +R=1"),
 ]
 
 graticule = create_graticule()
