@@ -371,7 +371,7 @@ For trees or graphs with embedded hierarchical information (i.e. a graph with an
 
 ![Figure 8-6](images/Figure_8-6.png)
 
-*Treemap, tree ring, and icicle views displaying the partitioning of classes into libraries, along with links connecting each class to its superclass*
+*Figure 8-6 Treemap, tree ring, and icicle views displaying the partitioning of classes into libraries, along with links connecting each class to its superclass.*
 
 For these techniques, each vertex is typically assigned a set of values in a 4-tuple array representing the placement and size of a rectangular region (or circular sector in the case of the tree ring view). These methods also utilize a layout strategy which is plugged into vtkAreaLayout. Currently available strategies include: 
 - vtkBoxLayoutStrategy (treemap) - a tree map layout that puts vertices in square-ish boxes by recursive partitioning of the space for children vertices. 
