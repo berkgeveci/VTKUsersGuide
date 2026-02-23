@@ -23,17 +23,17 @@ VTKUsersGuide/
 ├── VTKUsersGuide.pdf          # Original PDF source
 ├── chapter03/                  # Chapter 3: System Overview
 │   ├── Chapter3.md
-│   ├── images/                 # 7 high-resolution figures (300 DPI)
+│   ├── images/                 # 6 high-resolution figures (300 DPI)
 │   └── README.md
 ├── chapter04/                  # Chapter 4: The Basics
 │   ├── Chapter4.md
 │   └── images/                 # 16 figures
 ├── chapter05/                  # Chapter 5: Visualization Techniques
 │   ├── Chapter5.md
-│   └── images/                 # 14 figures
+│   └── images/                 # 18 figures
 ├── chapter06/                  # Chapter 6: Image Processing & Visualization
 │   ├── Chapter6.md
-│   └── images/                 # 17 figures
+│   └── images/                 # 19 figures
 ├── chapter07/                  # Chapter 7: Volume Rendering
 ├── chapter08/                  # Chapter 8: Advanced Topics
 ├── chapter09/                  # Chapter 9: Interaction
