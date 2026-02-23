@@ -1558,4 +1558,150 @@ The following table summarizes recommended filters for common visualization task
 | Warp by scalar | `vtkWarpScalar` | Any `vtkPointSet` |
 | Warp by vector | `vtkWarpVector` | Any `vtkPointSet` |
 
+## 5.7 Custom Python Filters
+
+VTK's Python wrapping lets you go beyond using built-in filters — you can create your own sources and filters in pure Python that participate fully in the VTK pipeline. The key base class is `VTKPythonAlgorithmBase` from `vtkmodules.util.vtkAlgorithm`.
+
+### Writing a Custom Source
+
+A source has no input ports and generates data from scratch. Subclass `VTKPythonAlgorithmBase` with `nInputPorts=0` and implement `RequestData()` to fill the output data object. The following example generates a 3D spiral polyline with scalar data (see `examples/python_source.py` and Figure 5–18).
+
+```python
+from vtkmodules.vtkCommonCore import vtkPoints, vtkFloatArray
+from vtkmodules.vtkCommonDataModel import vtkPolyData, vtkCellArray
+from vtkmodules.util.vtkAlgorithm import VTKPythonAlgorithmBase
+
+class SpiralSource(VTKPythonAlgorithmBase):
+    def __init__(self):
+        super().__init__(nInputPorts=0, nOutputPorts=1,
+                         outputType="vtkPolyData")
+        self._num_points = 200
+        self._num_turns = 5
+
+    def SetNumberOfPoints(self, n):
+        self._num_points = n
+        self.Modified()
+
+    def RequestData(self, request, inInfo, outInfo):
+        import math
+        output = vtkPolyData.GetData(outInfo)
+
+        points = vtkPoints()
+        scalars = vtkFloatArray()
+        scalars.SetName("ArcLength")
+
+        for i in range(self._num_points):
+            t = i / (self._num_points - 1)
+            angle = 2.0 * math.pi * self._num_turns * t
+            r = 0.5 * t
+            points.InsertNextPoint(r * math.cos(angle),
+                                   r * math.sin(angle), t)
+            scalars.InsertNextValue(t)
+
+        line = vtkCellArray()
+        line.InsertNextCell(self._num_points)
+        for i in range(self._num_points):
+            line.InsertCellPoint(i)
+
+        output.SetPoints(points)
+        output.SetLines(line)
+        output.GetPointData().SetScalars(scalars)
+        return 1
+```
+
+The source is used like any VTK algorithm — connect it with `GetOutputPort()`:
+
+```python
+source = SpiralSource()
+source.SetNumberOfPoints(500)
+
+mapper = vtkPolyDataMapper()
+mapper.SetInputConnection(source.GetOutputPort())
+```
+
+Note the call to `self.Modified()` in setter methods. This marks the algorithm as modified so the pipeline knows to re-execute `RequestData()` when the output is next requested.
+
+### Writing a Custom Filter
+
+A filter takes one or more inputs and produces output. Set `nInputPorts=1` and specify `inputType` and `outputType`. In `RequestData()`, retrieve the input with `vtkDataObject.GetData(inInfo[0])` and fill the output. The following example computes the Euclidean distance from each point to a reference point (see `examples/python_filter.py`).
+
+```python
+class DistanceToPointFilter(VTKPythonAlgorithmBase):
+    def __init__(self):
+        super().__init__(
+            nInputPorts=1, inputType="vtkPolyData",
+            nOutputPorts=1, outputType="vtkPolyData",
+        )
+        self._reference_point = (0.0, 0.0, 0.0)
+
+    def SetReferencePoint(self, x, y, z):
+        self._reference_point = (x, y, z)
+        self.Modified()
+
+    def RequestData(self, request, inInfo, outInfo):
+        import math
+        inp = vtkPolyData.GetData(inInfo[0])
+        output = vtkPolyData.GetData(outInfo)
+        output.ShallowCopy(inp)
+
+        rx, ry, rz = self._reference_point
+        distances = vtkFloatArray()
+        distances.SetName("Distance")
+        distances.SetNumberOfTuples(output.GetNumberOfPoints())
+
+        for i in range(output.GetNumberOfPoints()):
+            pt = output.GetPoint(i)
+            d = math.sqrt((pt[0]-rx)**2 + (pt[1]-ry)**2
+                          + (pt[2]-rz)**2)
+            distances.SetValue(i, d)
+
+        output.GetPointData().SetScalars(distances)
+        return 1
+```
+
+The filter slots into any pipeline:
+
+```python
+sphere = vtkSphereSource()
+dist_filter = DistanceToPointFilter()
+dist_filter.SetInputConnection(sphere.GetOutputPort())
+dist_filter.SetReferencePoint(1.0, 0.0, 0.0)
+```
+
+![Figure 5-18](images/Figure_5-18.png)
+
+*Figure 5–18 Custom Python algorithms. Left: a `SpiralSource` generates a 3D spiral polyline colored by arc length. Right: a `DistanceToPointFilter` colors a sphere by Euclidean distance to the point (1, 0, 0).*
+
+### Pipeline Methods
+
+Beyond `RequestData()`, you can override additional pipeline methods:
+
+- **`RequestInformation(self, request, inInfo, outInfo)`** — Provide meta-data to downstream filters before data is requested. This is where you set the whole extent for structured data (e.g., `vtkImageData`) using `vtkStreamingDemandDrivenPipeline.WHOLE_EXTENT()`.
+- **`RequestUpdateExtent(self, request, inInfo, outInfo)`** — Modify the data request going upstream. Use this to request a specific subset or time step from the input.
+- **`FillInputPortInformation(self, port, info)`** — Override to accept multiple input types or set port requirements (e.g., optional ports).
+- **`FillOutputPortInformation(self, port, info)`** — Override to produce a different output type than specified in the constructor.
+
+### Using NumPy with VTK Data
+
+For numerical work, `vtkmodules.numpy_interface.dataset_adapter` provides NumPy-wrapped access to VTK arrays, avoiding per-element Python loops:
+
+```python
+from vtkmodules.numpy_interface import dataset_adapter as dsa
+import numpy as np
+
+# In RequestData():
+inp = dsa.WrapDataObject(vtkPolyData.GetData(inInfo[0]))
+output_obj = dsa.WrapDataObject(vtkPolyData.GetData(outInfo))
+output_obj.ShallowCopy(inp.VTKObject)
+
+pts = inp.Points  # NumPy array, shape (N, 3)
+ref = np.array([1.0, 0.0, 0.0])
+distances = np.linalg.norm(pts - ref, axis=1)
+output_obj.PointData.append(distances, "Distance")
+```
+
+This approach is significantly faster than iterating over points in Python, especially for large datasets.
+
+> **See also:** [vtkPythonAlgorithm](https://examples.vtk.org/site/Python/Developers/) examples on the VTK Examples site.
+
 This concludes our overview of visualization techniques. You may also wish to refer to the next chapter which describes image processing and volume rendering.
