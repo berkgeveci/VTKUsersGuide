@@ -905,3 +905,323 @@ immapp.run(runner_params)
 **Event forwarding.** Mouse events are captured from ImGui's input state and forwarded to `vtkGenericRenderWindowInteractor`. The `is_interacting` flag ensures that a drag operation that starts inside the VTK viewport continues to track the mouse even if the cursor moves outside the viewport — this prevents the camera from jumping when the user drags near the edge.
 
 **Context initialization timing.** The `init_vtk_context` callback is registered as a `post_init` callback on the ImGui runner. This ensures VTK initializes its OpenGL state only after ImGui's OpenGL context is fully created and current. Calling `OpenGLInitContext()` earlier would fail because there would be no valid context to initialize against.
+
+## 3.8 A Tour of VTK Language Bindings
+
+VTK's core is written in C++ and shipped with official wrappings for Java and Python. But because those wrappings exist, any language that can call into Java or Python can also use VTK. This section demonstrates the same example — creating a cone, mapping it, rendering it, and starting an interactive window — in six different languages. Comparing the examples side by side shows how uniform VTK's API is across language boundaries: the pipeline structure is always the same, and only the syntax varies.
+
+The languages fall into three groups:
+
+- **JVM languages** (Java, Groovy) use VTK's native Java wrappings directly.
+- **.NET languages** (C#, F#) use ActiViz, a commercial .NET binding for VTK published as the `Kitware.VTK` NuGet package.
+- **Python compatible languages** (Julia, Ruby) call VTK through Python interop libraries (`PyCall` for Julia, `pycall` for Ruby), using VTK's Python wrappings under the hood.
+
+### Java
+
+VTK's Java wrappings are generated automatically from the C++ headers. Each VTK class becomes a Java class in the `vtk` package. Objects are created with `new` and methods are called with the same names as in C++. The `vtkNativeLibrary.LoadAllNativeLibraries()` call loads all VTK shared libraries into the JVM.
+
+```java
+import vtk.vtkConeSource;
+import vtk.vtkPolyDataMapper;
+import vtk.vtkActor;
+import vtk.vtkRenderer;
+import vtk.vtkRenderWindow;
+import vtk.vtkRenderWindowInteractor;
+import vtk.vtkNativeLibrary;
+
+public class cone {
+    static {
+        vtkNativeLibrary.LoadAllNativeLibraries();
+    }
+
+    public static void main(String[] args) {
+        vtkConeSource cone = new vtkConeSource();
+        cone.SetResolution(8);
+
+        vtkPolyDataMapper mapper = new vtkPolyDataMapper();
+        mapper.SetInputConnection(cone.GetOutputPort());
+
+        vtkActor actor = new vtkActor();
+        actor.SetMapper(mapper);
+
+        vtkRenderer renderer = new vtkRenderer();
+        renderer.AddActor(actor);
+        renderer.SetBackground(0.2, 0.3, 0.4);
+
+        vtkRenderWindow window = new vtkRenderWindow();
+        window.AddRenderer(renderer);
+        window.SetSize(640, 480);
+
+        vtkRenderWindowInteractor interactor = new vtkRenderWindowInteractor();
+        interactor.SetRenderWindow(window);
+
+        window.Render();
+        interactor.Start();
+    }
+}
+```
+
+Building and running requires the VTK JAR on the classpath and the native libraries on the library path. On macOS, the `-XstartOnFirstThread` flag is required because macOS requires all OpenGL operations to occur on the main thread:
+
+```bash
+javac -cp "$VTK_DIR/vtk.jar" cone.java
+java -XstartOnFirstThread \
+     -cp ".:$VTK_DIR/vtk.jar" \
+     -Djava.library.path="$VTK_DIR/lib/java/vtk-Darwin-arm64" \
+     cone
+```
+
+### Groovy
+
+Groovy runs on the JVM and uses VTK's Java wrappings directly. The syntax is more concise — `def` replaces explicit types, and semicolons are optional — but the VTK method calls are identical to Java.
+
+```groovy
+import vtk.vtkNativeLibrary
+import vtk.vtkConeSource
+import vtk.vtkPolyDataMapper
+import vtk.vtkActor
+import vtk.vtkRenderer
+import vtk.vtkRenderWindow
+import vtk.vtkRenderWindowInteractor
+
+vtkNativeLibrary.LoadAllNativeLibraries()
+
+def cone = new vtkConeSource()
+cone.SetResolution(8)
+
+def mapper = new vtkPolyDataMapper()
+mapper.SetInputConnection(cone.GetOutputPort())
+
+def actor = new vtkActor()
+actor.SetMapper(mapper)
+
+def renderer = new vtkRenderer()
+renderer.AddActor(actor)
+renderer.SetBackground(0.2, 0.3, 0.4)
+
+def window = new vtkRenderWindow()
+window.AddRenderer(renderer)
+window.SetSize(640, 480)
+
+def interactor = new vtkRenderWindowInteractor()
+interactor.SetRenderWindow(window)
+
+window.Render()
+interactor.Start()
+```
+
+Groovy scripts require the VTK JAR on the classpath. On macOS, JVM flags must be passed through the `JAVA_OPTS` environment variable:
+
+```bash
+JAVA_OPTS="-XstartOnFirstThread -Djava.library.path=$VTK_DIR/lib/java/vtk-Darwin-arm64" \
+  groovy --classpath "$VTK_DIR/vtk.jar" cone.groovy
+```
+
+### C\#
+
+C# accesses VTK through [ActiViz](https://www.kitware.eu/activiz/), a .NET binding distributed as the `Kitware.VTK` NuGet package. The API follows .NET conventions: objects are created with static `New()` methods, and the namespace is `Kitware.VTK`.
+
+```csharp
+using Kitware.VTK;
+
+class Cone
+{
+    static void Main()
+    {
+        var cone = vtkConeSource.New();
+        cone.SetResolution(8);
+
+        var mapper = vtkPolyDataMapper.New();
+        mapper.SetInputConnection(cone.GetOutputPort());
+
+        var actor = vtkActor.New();
+        actor.SetMapper(mapper);
+
+        var renderer = vtkRenderer.New();
+        renderer.AddActor(actor);
+        renderer.SetBackground(0.2, 0.3, 0.4);
+
+        var window = vtkRenderWindow.New();
+        window.AddRenderer(renderer);
+        window.SetSize(640, 480);
+
+        var interactor = vtkRenderWindowInteractor.New();
+        interactor.SetRenderWindow(window);
+
+        window.Render();
+        interactor.Start();
+    }
+}
+```
+
+The project file references the NuGet package:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Kitware.VTK" Version="9.5.2025.1212" />
+  </ItemGroup>
+</Project>
+```
+
+Build and run with the .NET CLI:
+
+```bash
+dotnet run
+```
+
+### F\#
+
+F# uses the same ActiViz NuGet package as C#. The functional syntax is more concise — no class boilerplate, just a sequence of `let` bindings:
+
+```fsharp
+open Kitware.VTK
+
+let cone = vtkConeSource.New()
+cone.SetResolution(8)
+
+let mapper = vtkPolyDataMapper.New()
+mapper.SetInputConnection(cone.GetOutputPort())
+
+let actor = vtkActor.New()
+actor.SetMapper(mapper)
+
+let renderer = vtkRenderer.New()
+renderer.AddActor(actor)
+renderer.SetBackground(0.2, 0.3, 0.4)
+
+let window = vtkRenderWindow.New()
+window.AddRenderer(renderer)
+window.SetSize(640, 480)
+
+let interactor = vtkRenderWindowInteractor.New()
+interactor.SetRenderWindow(window)
+
+window.Render()
+interactor.Start()
+```
+
+The project file is similar to C# but uses an `.fsproj` file and must explicitly list the source file:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="cone.fsx" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Kitware.VTK" Version="9.5.2025.1212" />
+  </ItemGroup>
+</Project>
+```
+
+### Julia
+
+Julia accesses VTK through the `PyCall` package, which embeds a Python interpreter and calls VTK's Python wrappings. The VTK method names and pipeline structure are identical to Python:
+
+```julia
+using PyCall
+
+vtk = pyimport("vtkmodules.vtkFiltersSources")
+vtkRendering = pyimport("vtkmodules.vtkRenderingCore")
+pyimport("vtkmodules.vtkRenderingOpenGL2")
+pyimport("vtkmodules.vtkInteractionStyle")
+
+cone = vtk.vtkConeSource()
+cone.SetResolution(8)
+
+mapper = vtkRendering.vtkPolyDataMapper()
+mapper.SetInputConnection(cone.GetOutputPort())
+
+actor = vtkRendering.vtkActor()
+actor.SetMapper(mapper)
+
+renderer = vtkRendering.vtkRenderer()
+renderer.AddActor(actor)
+renderer.SetBackground(0.2, 0.3, 0.4)
+
+window = vtkRendering.vtkRenderWindow()
+window.AddRenderer(renderer)
+window.SetSize(640, 480)
+
+interactor = vtkRendering.vtkRenderWindowInteractor()
+interactor.SetRenderWindow(window)
+
+window.Render()
+interactor.Start()
+```
+
+`PyCall` must be configured to use a Python environment that has VTK installed. Set the `PYTHONPATH` to include VTK's Python packages:
+
+```bash
+PYTHONPATH=/path/to/vtk/python/site-packages julia cone.jl
+```
+
+### Ruby
+
+Ruby accesses VTK through the `pycall` gem, which bridges Ruby to Python. The `pyfrom` and `pyimport` methods load VTK's Python modules, and VTK objects are created with Ruby's `new` syntax:
+
+```ruby
+require 'pycall/import'
+include PyCall::Import
+
+pyfrom 'vtkmodules.vtkFiltersSources', import: :vtkConeSource
+pyfrom 'vtkmodules.vtkRenderingCore', import: %i[
+  vtkPolyDataMapper vtkActor vtkRenderer
+  vtkRenderWindow vtkRenderWindowInteractor
+]
+pyimport 'vtkmodules.vtkRenderingOpenGL2', as: :vtkRenderingOpenGL2
+pyimport 'vtkmodules.vtkInteractionStyle', as: :vtkInteractionStyle
+
+cone = vtkConeSource.new
+cone.SetResolution(8)
+
+mapper = vtkPolyDataMapper.new
+mapper.SetInputConnection(cone.GetOutputPort())
+
+actor = vtkActor.new
+actor.SetMapper(mapper)
+
+renderer = vtkRenderer.new
+renderer.AddActor(actor)
+renderer.SetBackground(0.2, 0.3, 0.4)
+
+window = vtkRenderWindow.new
+window.AddRenderer(renderer)
+window.SetSize(640, 480)
+
+interactor = vtkRenderWindowInteractor.new
+interactor.SetRenderWindow(window)
+
+window.Render
+interactor.Start
+```
+
+The `pycall` gem needs to know which Python interpreter to use:
+
+```bash
+gem install pycall
+PYTHON=/path/to/python \
+  PYTHONPATH=/path/to/vtk/python/site-packages \
+  ruby cone.rb
+```
+
+### Summary
+
+Every example above creates the same visualization pipeline: a cone source connected to a mapper, attached to an actor, added to a renderer, displayed in a window with an interactor. The table below summarizes how each language accesses VTK:
+
+| Language | Binding mechanism | Object creation | Package/dependency |
+|---|---|---|---|
+| Java | Native JNI wrapping | `new vtkConeSource()` | `vtk.jar` + native libs |
+| Groovy | VTK Java wrappings (JVM) | `new vtkConeSource()` | `vtk.jar` + native libs |
+| C# | ActiViz (.NET binding) | `vtkConeSource.New()` | `Kitware.VTK` NuGet |
+| F# | ActiViz (.NET binding) | `vtkConeSource.New()` | `Kitware.VTK` NuGet |
+| Julia | PyCall → VTK Python | `vtk.vtkConeSource()` | `PyCall` + VTK Python |
+| Ruby | pycall → VTK Python | `vtkConeSource.new` | `pycall` gem + VTK Python |
