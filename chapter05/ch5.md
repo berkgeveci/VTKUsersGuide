@@ -774,6 +774,74 @@ In fact, the vtkDataSetMapper mapper uses vtkGeometryFilter internally to conver
 
 In addition, vtkGeometryFilter has methods that allows you to extract cells based on a range of point ids, cell ids, or whether the cells lie in a particular rectangular region in space. vtkGeometryFilter extracts pieces of datasets based on point and cell ids using the methods PointClippingOn(), SetPointMinimum(), SetPointMaximum() and CellClippingOn(), SetCellMinimum(), SetCellMaximum(). The minimum and maximum values specify a range of ids which are extracted. Also, you can use a rectangular region in space to limit what's extracted. Use the ExtentClippingOn() and SetExtent() methods to enable extent clipping and specify the extent. The extent consists of six values defining a bounding box in space—(x<sub>min</sub>, x<sub>max</sub>, y<sub>min</sub>, y<sub>max</sub>, z<sub>min</sub>, z<sub>max</sub>). You can use point, cell, and extent clipping in any combination. This is a useful feature when debugging data, or when you only want to look at a portion of it.
 
+### Extract Portions of an Unstructured Grid
+
+`vtkExtractUnstructuredGrid` extracts portions of an unstructured grid using a range of point ids, cell ids, or geometric bounds (the Extent instance variable which defines a bounding box). Although it accepts only `vtkUnstructuredGrid` as input, we include it here alongside the other extraction filters since the pattern is general. See `examples/extract_ugrid.py` for the complete example.
+
+```python
+from vtkmodules.vtkCommonCore import vtkLookupTable
+from vtkmodules.vtkFiltersCore import vtkConnectivityFilter, vtkPolyDataNormals
+from vtkmodules.vtkFiltersExtraction import vtkExtractUnstructuredGrid
+from vtkmodules.vtkFiltersGeneral import vtkWarpVector
+from vtkmodules.vtkFiltersGeometry import vtkGeometryFilter
+from vtkmodules.vtkIOLegacy import vtkDataSetReader
+from vtkmodules.vtkRenderingCore import vtkActor, vtkDataSetMapper, vtkPolyDataMapper
+
+reader = vtkDataSetReader()
+reader.SetFileName("data/blow.vtk")
+reader.SetScalarsName("thickness9")
+reader.SetVectorsName("displacement9")
+
+warp = vtkWarpVector()
+warp.SetInputConnection(reader.GetOutputPort())
+
+connect = vtkConnectivityFilter()
+connect.SetInputConnection(warp.GetOutputPort())
+connect.SetExtractionModeToSpecifiedRegions()
+connect.AddSpecifiedRegion(0)
+connect.AddSpecifiedRegion(1)
+
+mold_mapper = vtkDataSetMapper()
+mold_mapper.SetInputConnection(reader.GetOutputPort())
+mold_mapper.ScalarVisibilityOff()
+
+mold_actor = vtkActor()
+mold_actor.SetMapper(mold_mapper)
+mold_actor.GetProperty().SetColor(0.2, 0.2, 0.2)
+mold_actor.GetProperty().SetRepresentationToWireframe()
+
+connect2 = vtkConnectivityFilter()
+connect2.SetInputConnection(warp.GetOutputPort())
+connect2.SetExtractionModeToSpecifiedRegions()
+connect2.AddSpecifiedRegion(2)
+
+extract_grid = vtkExtractUnstructuredGrid()
+extract_grid.SetInputConnection(connect2.GetOutputPort())
+extract_grid.CellClippingOn()
+extract_grid.SetCellMinimum(0)
+extract_grid.SetCellMaximum(23)
+
+parison = vtkGeometryFilter()
+parison.SetInputConnection(extract_grid.GetOutputPort())
+
+normals2 = vtkPolyDataNormals()
+normals2.SetInputConnection(parison.GetOutputPort())
+normals2.SetFeatureAngle(60)
+
+lut = vtkLookupTable()
+lut.SetHueRange(0.0, 0.66667)
+
+parison_mapper = vtkPolyDataMapper()
+parison_mapper.SetInputConnection(normals2.GetOutputPort())
+parison_mapper.SetLookupTable(lut)
+parison_mapper.SetScalarRange(0.12, 1.0)
+
+parison_actor = vtkActor()
+parison_actor.SetMapper(parison_mapper)
+```
+
+In this example, we use cell clipping (i.e., using cell ids) in combination with a connectivity filter to extract portions of the mesh. Similarly, we could use point ids and a geometric extent to extract portions of the mesh. The `vtkConnectivityFilter` (and a related class `vtkPolyDataConnectivityFilter`) are used to extract connected portions of a dataset. (Cells are connected when they share points.) The `SetExtractionModeToSpecifiedRegions()` method indicates to the filter which connected region to extract. By default, the connectivity filters extract the largest connected regions encountered. However, it is also possible to specify a particular region as this example does, which of course requires some experimentation to determine which region is which.
+
 ### Thresholding
 
 Thresholding is one of the most fundamental filtering operations: it extracts the subset of cells (or points) from a dataset whose scalar values satisfy a criterion. VTK provides two complementary filters: `vtkThreshold`, which operates on cells and produces a `vtkUnstructuredGrid`, and `vtkThresholdPoints`, which operates on points and produces `vtkPolyData`.
@@ -1394,74 +1462,6 @@ a_tetra_grid.SetPoints(tetra_points)
 ```
 
 It is mandatory that you invoke the Allocate() method prior to inserting cells into an instance of vtkUnstructuredGrid. The values supplied to this method are the initial size of the data, and the size to extend the allocation by when additional memory is required. Larger values generally give better performance (since fewer memory reallocations are required).
-
-### Extract Portions of the Mesh
-
-In most cases, unstructured grids are processed by filters that accept vtkDataSet as input (see Section 5.1). One filter that directly accepts vtkUnstructuredGrid as input is the vtkExtractUnstructuredGrid. This filter is used to extract portions of the grid using a range of point ids, cell ids, or geometric bounds (the Extent instance variable which defines a bounding box). See `examples/extract_ugrid.py` for the complete example.
-
-```python
-from vtkmodules.vtkCommonCore import vtkLookupTable
-from vtkmodules.vtkFiltersCore import vtkConnectivityFilter, vtkPolyDataNormals
-from vtkmodules.vtkFiltersExtraction import vtkExtractUnstructuredGrid
-from vtkmodules.vtkFiltersGeneral import vtkWarpVector
-from vtkmodules.vtkFiltersGeometry import vtkGeometryFilter
-from vtkmodules.vtkIOLegacy import vtkDataSetReader
-from vtkmodules.vtkRenderingCore import vtkActor, vtkDataSetMapper, vtkPolyDataMapper
-
-reader = vtkDataSetReader()
-reader.SetFileName("data/blow.vtk")
-reader.SetScalarsName("thickness9")
-reader.SetVectorsName("displacement9")
-
-warp = vtkWarpVector()
-warp.SetInputConnection(reader.GetOutputPort())
-
-connect = vtkConnectivityFilter()
-connect.SetInputConnection(warp.GetOutputPort())
-connect.SetExtractionModeToSpecifiedRegions()
-connect.AddSpecifiedRegion(0)
-connect.AddSpecifiedRegion(1)
-
-mold_mapper = vtkDataSetMapper()
-mold_mapper.SetInputConnection(reader.GetOutputPort())
-mold_mapper.ScalarVisibilityOff()
-
-mold_actor = vtkActor()
-mold_actor.SetMapper(mold_mapper)
-mold_actor.GetProperty().SetColor(0.2, 0.2, 0.2)
-mold_actor.GetProperty().SetRepresentationToWireframe()
-
-connect2 = vtkConnectivityFilter()
-connect2.SetInputConnection(warp.GetOutputPort())
-connect2.SetExtractionModeToSpecifiedRegions()
-connect2.AddSpecifiedRegion(2)
-
-extract_grid = vtkExtractUnstructuredGrid()
-extract_grid.SetInputConnection(connect2.GetOutputPort())
-extract_grid.CellClippingOn()
-extract_grid.SetCellMinimum(0)
-extract_grid.SetCellMaximum(23)
-
-parison = vtkGeometryFilter()
-parison.SetInputConnection(extract_grid.GetOutputPort())
-
-normals2 = vtkPolyDataNormals()
-normals2.SetInputConnection(parison.GetOutputPort())
-normals2.SetFeatureAngle(60)
-
-lut = vtkLookupTable()
-lut.SetHueRange(0.0, 0.66667)
-
-parison_mapper = vtkPolyDataMapper()
-parison_mapper.SetInputConnection(normals2.GetOutputPort())
-parison_mapper.SetLookupTable(lut)
-parison_mapper.SetScalarRange(0.12, 1.0)
-
-parison_actor = vtkActor()
-parison_actor.SetMapper(parison_mapper)
-```
-
-In this example, we are using cell clipping (i.e., using cell ids) in combination with a connectivity filter to extract portions of the mesh. Similarly, we could use point ids and a geometric extent to extract portions of the mesh. The vtkConnectivityFilter (and a related class vtkPolyDataConnectivityFilter) are used to extract connected portions of a dataset. (Cells are connected when they share points.) The SetExtractionModeToSpecifiedRegions() method indicates to the filter which connected region to extract. By default, the connectivity filters extract the largest connected regions encountered. However, it is also possible to specify a particular region as this example does, which of course requires some experimentation to determine which region is which.
 
 ### Contour Unstructured Grids
 
