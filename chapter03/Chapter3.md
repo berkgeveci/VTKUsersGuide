@@ -546,3 +546,185 @@ sys.exit(app.exec())
 ```
 
 The `QVTKRenderWindowInteractor` widget manages its own `vtkRenderWindow` and `vtkRenderWindowInteractor` internally. Setting `QVTKRWIBase` to `"QOpenGLWidget"` *before* importing the widget selects the `QOpenGLWidget`-backed implementation, which provides reliable rendering on all platforms. After calling `Initialize()` and `Start()` on the widget, hand control to Qt's event loop with `app.exec()`.
+
+## 3.5 Web Applications with Trame
+
+Trame is a Python web framework developed by Kitware that lets you build interactive VTK visualization applications served in the browser. The entire application is written in Python — no JavaScript is required. Trame supports both local rendering (client-side via vtk.js, where geometry is serialized and sent to the browser) and remote rendering (server-side, where VTK renders on the server and streams images to the client).
+
+### Installation
+
+Trame is distributed as a set of PyPI packages. The core packages needed for VTK applications are:
+
+```bash
+pip install trame trame-vtk trame-vuetify
+```
+
+- **trame** — The core framework that manages the server, application state, and UI layout.
+- **trame-vtk** — Provides VTK rendering widgets (`VtkLocalView`, `VtkRemoteView`) for embedding VTK scenes in the browser.
+- **trame-vuetify** — Provides Vuetify 3 UI components (toolbars, buttons, sliders, etc.) for building the application interface.
+
+### A Minimal Trame Application
+
+The following example creates a trame application that displays an interactive VTK cone in the browser. The complete source is in `examples/TrameCone.py`.
+
+```python
+from trame.app import get_server
+from trame.ui.vuetify3 import SinglePageLayout
+from trame.widgets import vtk as vtk_widgets, vuetify3 as vuetify
+
+from vtkmodules.vtkFiltersSources import vtkConeSource
+from vtkmodules.vtkRenderingCore import (
+    vtkActor,
+    vtkPolyDataMapper,
+    vtkRenderer,
+    vtkRenderWindow,
+    vtkRenderWindowInteractor,
+)
+from vtkmodules.vtkInteractionStyle import vtkInteractorStyleSwitch  # noqa
+import vtkmodules.vtkRenderingOpenGL2  # noqa
+
+# --- VTK pipeline (identical to any other VTK Python script) ---
+renderer = vtkRenderer()
+render_window = vtkRenderWindow()
+render_window.AddRenderer(renderer)
+render_window_interactor = vtkRenderWindowInteractor()
+render_window_interactor.SetRenderWindow(render_window)
+render_window_interactor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
+
+cone = vtkConeSource()
+mapper = vtkPolyDataMapper()
+mapper.SetInputConnection(cone.GetOutputPort())
+actor = vtkActor()
+actor.SetMapper(mapper)
+renderer.AddActor(actor)
+renderer.ResetCamera()
+
+# --- Trame application ---
+server = get_server(client_type="vue3")
+
+with SinglePageLayout(server) as layout:
+    layout.title.set_text("VTK Cone")
+    with layout.content:
+        with vuetify.VContainer(fluid=True, classes="pa-0 fill-height"):
+            vtk_widgets.VtkLocalView(render_window)
+
+if __name__ == "__main__":
+    server.start()
+```
+
+Run the script with:
+
+```bash
+python TrameCone.py
+```
+
+Trame automatically opens a browser tab showing the cone. You can rotate, zoom, and pan using the mouse, just as you would in a desktop VTK window.
+
+### Key Concepts
+
+**`get_server(client_type="vue3")`** creates the trame server that manages shared state between the Python backend and the browser frontend. The `client_type="vue3"` argument selects Vue 3 as the frontend framework.
+
+**`SinglePageLayout`** provides an application shell with a toolbar, an optional navigation drawer, and a content area. It is a convenience wrapper — you can also build fully custom layouts.
+
+**`VtkLocalView`** performs client-side rendering via vtk.js. The VTK scene graph is serialized and sent to the browser, which renders it using WebGL. No GPU is required on the server. This mode provides the best interactivity for small to medium datasets because all rendering happens locally in the browser.
+
+**`VtkRemoteView`** performs server-side rendering. VTK renders on the server using its full OpenGL pipeline and streams the resulting images to the browser. This mode is essential for very large datasets that cannot fit in browser memory, or when server-side features (e.g., volume rendering, advanced OpenGL shaders) are needed. To switch from local to remote rendering, simply replace `VtkLocalView` with `VtkRemoteView` in the code above.
+
+### Choosing a Rendering Mode
+
+| | VtkLocalView | VtkRemoteView |
+|---|---|---|
+| **Rendering location** | Browser (WebGL) | Server (OpenGL) |
+| **Network traffic** | Geometry (once) | Images (every frame) |
+| **Best for** | Small/medium datasets | Large datasets |
+| **Interactivity** | Immediate (no round-trip) | Depends on network latency |
+| **Server GPU required** | No | Yes |
+
+For many applications, `VtkLocalView` is the right default. Switch to `VtkRemoteView` when the dataset is too large for the browser or when you need rendering features only available in server-side VTK.
+
+## 3.6 JavaScript and WebAssembly
+
+VTK can be compiled to WebAssembly using Emscripten, allowing the full C++ VTK library to run directly in the browser with no server required. The `@kitware/vtk-wasm` npm package provides a ready-to-use bundle that can be loaded via a single `<script>` tag. The result is a self-contained HTML file — no build tools, no bundler, no backend.
+
+### A Self-Contained Example
+
+The following HTML file renders an interactive VTK cone entirely in the browser. The complete source is in `examples/cone.html`.
+
+```html
+<html>
+  <head>
+    <script
+      src="https://unpkg.com/@kitware/vtk-wasm/vtk-umd.js"
+      id="vtk-wasm"
+      data-url="https://gitlab.kitware.com/api/v4/projects/13/packages/generic/vtk-wasm32-emscripten/9.5.20251215/vtk-9.5.20251215-wasm32-emscripten.tar.gz"
+    ></script>
+  </head>
+  <body>
+    <canvas id="vtk-wasm-window" tabindex="-1" onclick="focus()"
+      style="width: 640px; height: 480px;"></canvas>
+    <script>
+      vtkReady.then(async (vtk) => {
+        const cone = vtk.vtkConeSource();
+        await cone.setResolution(8);
+
+        const mapper = vtk.vtkPolyDataMapper();
+        await mapper.setInputConnection(await cone.getOutputPort());
+
+        const actor = vtk.vtkActor();
+        await actor.setMapper(mapper);
+
+        const renderer = vtk.vtkRenderer();
+        await renderer.addActor(actor);
+        await renderer.setBackground(0.2, 0.3, 0.4);
+        await renderer.resetCamera();
+
+        const canvasSelector = "#vtk-wasm-window";
+        const renderWindow = vtk.vtkRenderWindow({ canvasSelector });
+        await renderWindow.addRenderer(renderer);
+
+        const interactor = vtk.vtkRenderWindowInteractor({
+          canvasSelector,
+          renderWindow,
+        });
+        await interactor.interactorStyle.setCurrentStyleToTrackballCamera();
+
+        await interactor.start();
+      });
+    </script>
+  </body>
+</html>
+```
+
+To try it, serve the file with any HTTP server (WebAssembly modules cannot be loaded from `file://` URLs):
+
+```bash
+python -m http.server 8000
+```
+
+Then open `http://localhost:8000/cone.html` in your browser. You can rotate, zoom, and pan the cone using the mouse.
+
+### How It Works
+
+**Loading the Wasm bundle.** The `<script>` tag loads the `vtk-umd.js` loader from npm (via unpkg). The `data-url` attribute tells the loader where to fetch the prebuilt WebAssembly binary — a compressed archive containing the full VTK C++ library compiled for the `wasm32-emscripten` target. On first load the binary is downloaded and cached by the browser.
+
+**`vtkReady`.** The loader exposes a global `vtkReady` Promise that resolves with a `vtk` object once the Wasm module has been compiled and initialized. All VTK API calls go through this object.
+
+**Async/await.** Every VTK method call is `async` because it crosses the JavaScript-to-WebAssembly boundary. This is why the pipeline code uses `await` on each call — for example `await cone.setResolution(8)` and `await mapper.setInputConnection(await cone.getOutputPort())`.
+
+**camelCase method names.** The JavaScript bindings use camelCase (`setResolution`, `addActor`, `resetCamera`) rather than the PascalCase used by C++ and Python (`SetResolution`, `AddActor`, `ResetCamera`). This follows JavaScript naming conventions.
+
+**Canvas and interactor.** The `<canvas>` element serves as the rendering target. The `vtkRenderWindow` and `vtkRenderWindowInteractor` both receive a `canvasSelector` string that identifies it. The interactor handles mouse and keyboard events for rotation, panning, and zooming via the trackball camera style.
+
+### Comparison with Trame
+
+The vtk-wasm approach and trame serve different deployment models:
+
+| | vtk-wasm (Section 3.6) | Trame (Section 3.5) |
+|---|---|---|
+| **Runs where** | Entirely in the browser | Python server + browser client |
+| **VTK implementation** | Full C++ VTK compiled to Wasm | Native C++ VTK on the server |
+| **Server required** | No (static file hosting only) | Yes (Python process) |
+| **Language** | JavaScript / HTML | Python |
+| **Best for** | Standalone demos, static sites, offline apps | Multi-user apps, large data, server-side processing |
+
+vtk-wasm is ideal when you want to ship a self-contained visualization with no backend infrastructure. Trame is the better choice when you need a Python backend for data processing, shared state management, or server-side rendering of large datasets.

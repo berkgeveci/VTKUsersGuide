@@ -1,0 +1,42 @@
+<html>
+  <head>
+    <script
+      src="https://unpkg.com/@kitware/vtk-wasm/vtk-umd.js"
+      id="vtk-wasm"
+      data-url="https://gitlab.kitware.com/api/v4/projects/13/packages/generic/vtk-wasm32-emscripten/9.5.20251215/vtk-9.5.20251215-wasm32-emscripten.tar.gz"
+    ></script>
+  </head>
+  <body>
+    <canvas id="vtk-wasm-window" tabindex="-1" onclick="focus()"
+      style="width: 640px; height: 480px;"></canvas>
+    <script>
+      vtkReady.then(async (vtk) => {
+        const cone = vtk.vtkConeSource();
+        await cone.setResolution(8);
+
+        const mapper = vtk.vtkPolyDataMapper();
+        await mapper.setInputConnection(await cone.getOutputPort());
+
+        const actor = vtk.vtkActor();
+        await actor.setMapper(mapper);
+
+        const renderer = vtk.vtkRenderer();
+        await renderer.addActor(actor);
+        await renderer.setBackground(0.2, 0.3, 0.4);
+        await renderer.resetCamera();
+
+        const canvasSelector = "#vtk-wasm-window";
+        const renderWindow = vtk.vtkRenderWindow({ canvasSelector });
+        await renderWindow.addRenderer(renderer);
+
+        const interactor = vtk.vtkRenderWindowInteractor({
+          canvasSelector,
+          renderWindow,
+        });
+        await interactor.interactorStyle.setCurrentStyleToTrackballCamera();
+
+        await interactor.start();
+      });
+    </script>
+  </body>
+</html>
