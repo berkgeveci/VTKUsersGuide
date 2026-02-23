@@ -700,3 +700,152 @@ For 3D volumes, use `vtkImageAnisotropicDiffusion3D` with the same interface. Se
 *Figure 6–18 Image processing filters. From left: edge detection (`vtkImageGradientMagnitude`), median filtering of a noisy image, convolution with a sharpening kernel, and anisotropic diffusion for edge-preserving smoothing.*
 
 > **See also:** [MedianComparison](https://examples.vtk.org/site/Python/Images/MedianComparison/) and [HybridMedianComparison](https://examples.vtk.org/site/Python/Images/HybridMedianComparison/) on the VTK Examples site.
+
+### Morphological Operations
+
+Morphological operations process binary or grayscale images based on the shape and size of a structuring element (kernel). They are fundamental to tasks like noise removal, shape analysis, and feature extraction.
+
+**Dilation and Erosion.** `vtkImageDilateErode3D` performs either dilation (expanding bright regions) or erosion (shrinking bright regions) depending on which value is set as the dilate vs. erode value. The kernel size controls the extent of the operation.
+
+```python
+from vtkmodules.vtkImagingMorphological import vtkImageDilateErode3D
+
+# Dilation: expand bright regions
+dilate = vtkImageDilateErode3D()
+dilate.SetInputConnection(binary_image.GetOutputPort())
+dilate.SetKernelSize(5, 5, 1)  # 5x5 for 2D images
+dilate.SetDilateValue(255)
+dilate.SetErodeValue(0)
+
+# Erosion: swap the values
+erode = vtkImageDilateErode3D()
+erode.SetInputConnection(binary_image.GetOutputPort())
+erode.SetKernelSize(5, 5, 1)
+erode.SetDilateValue(0)
+erode.SetErodeValue(255)
+```
+
+**Opening and Closing.** `vtkImageOpenClose3D` combines erosion and dilation in sequence. **Opening** (erosion then dilation) removes small bright features and thin protrusions. **Closing** (dilation then erosion) fills small dark gaps and holes.
+
+```python
+from vtkmodules.vtkImagingMorphological import vtkImageOpenClose3D
+
+# Opening: removes small bright features
+opening = vtkImageOpenClose3D()
+opening.SetInputConnection(binary_image.GetOutputPort())
+opening.SetKernelSize(5, 5, 1)
+opening.SetOpenValue(255)
+opening.SetCloseValue(0)
+
+# Closing: swap Open/Close values
+closing = vtkImageOpenClose3D()
+closing.SetInputConnection(binary_image.GetOutputPort())
+closing.SetKernelSize(5, 5, 1)
+closing.SetOpenValue(0)
+closing.SetCloseValue(255)
+```
+
+**Island Removal.** `vtkImageIslandRemoval2D` removes small connected components (islands) below a specified area threshold. `vtkImageSeedConnectivity` performs flood-fill-style connected component extraction starting from seed points.
+
+See `examples/morphology.py` for a complete example.
+
+> **See also:** [DilateErode](https://examples.vtk.org/site/Python/Images/DilateErode/) on the VTK Examples site.
+
+### FFT and Frequency Domain Filtering
+
+The Fast Fourier Transform (FFT) converts an image from the spatial domain to the frequency domain, where low frequencies represent smooth regions and high frequencies represent edges and fine detail. Filtering in the frequency domain can be more efficient than spatial convolution for large kernels.
+
+**Computing the FFT.** `vtkImageFFT` performs the forward transform, producing a complex-valued image (two components: real and imaginary). Use `vtkImageFourierCenter` to shift the zero-frequency component to the center for visualization.
+
+```python
+from vtkmodules.vtkImagingFourier import vtkImageFFT, vtkImageFourierCenter
+from vtkmodules.vtkImagingMath import vtkImageMagnitude, vtkImageLogarithmicScale
+
+fft = vtkImageFFT()
+fft.SetInputConnection(image_source.GetOutputPort())
+fft.SetDimensionality(2)
+
+center = vtkImageFourierCenter()
+center.SetInputConnection(fft.GetOutputPort())
+center.SetDimensionality(2)
+
+# Compute magnitude and log-scale for display
+mag = vtkImageMagnitude()
+mag.SetInputConnection(center.GetOutputPort())
+
+log_scale = vtkImageLogarithmicScale()
+log_scale.SetInputConnection(mag.GetOutputPort())
+log_scale.SetConstant(15)
+```
+
+See `examples/fft_spectrum.py` for a complete example.
+
+**Frequency Domain Filters.** VTK provides several filters that operate directly on FFT data:
+
+| Filter | Effect |
+|--------|--------|
+| `vtkImageButterworthLowPass` | Smooth roll-off low-pass (removes high frequencies) |
+| `vtkImageButterworthHighPass` | Smooth roll-off high-pass (removes low frequencies) |
+| `vtkImageIdealLowPass` | Sharp cutoff low-pass |
+| `vtkImageIdealHighPass` | Sharp cutoff high-pass |
+
+The typical workflow is: forward FFT, apply frequency filter, inverse FFT (`vtkImageRFFT`), extract the real component.
+
+```python
+from vtkmodules.vtkImagingFourier import (
+    vtkImageButterworthLowPass, vtkImageFFT, vtkImageRFFT,
+)
+from vtkmodules.vtkImagingCore import vtkImageExtractComponents
+
+fft = vtkImageFFT()
+fft.SetInputConnection(image_source.GetOutputPort())
+fft.SetDimensionality(2)
+
+butterworth = vtkImageButterworthLowPass()
+butterworth.SetInputConnection(fft.GetOutputPort())
+butterworth.SetCutOff(0.1)   # normalized frequency
+butterworth.SetOrder(2)      # roll-off steepness
+
+rfft = vtkImageRFFT()
+rfft.SetInputConnection(butterworth.GetOutputPort())
+rfft.SetDimensionality(2)
+
+# Extract real component (discard imaginary rounding errors)
+extract = vtkImageExtractComponents()
+extract.SetInputConnection(rfft.GetOutputPort())
+extract.SetComponents(0)
+```
+
+The `CutOff` parameter is in normalized frequency units (cycles per pixel). Lower values produce stronger smoothing. The `Order` parameter controls the steepness of the transition — higher orders approach an ideal (sharp) cutoff. See `examples/butterworth_filter.py` for a complete example.
+
+### Distance Transforms
+
+Distance transforms compute, for each pixel, the distance to the nearest pixel of a specified value (typically the nearest boundary or foreground pixel). They are useful for shape analysis, skeletonization, and level-set methods.
+
+**vtkImageEuclideanDistance** computes the exact Euclidean distance transform. It is accurate but slower than the city-block alternative.
+
+```python
+from vtkmodules.vtkImagingGeneral import vtkImageEuclideanDistance
+
+dist = vtkImageEuclideanDistance()
+dist.SetInputConnection(binary_image.GetOutputPort())
+dist.ConsiderAnisotropyOn()  # account for non-uniform spacing
+```
+
+**vtkImageCityBlockDistance** computes the Manhattan (L1) distance, which uses only horizontal and vertical steps. It is faster but less accurate than Euclidean distance.
+
+```python
+from vtkmodules.vtkImagingGeneral import vtkImageCityBlockDistance
+
+dist = vtkImageCityBlockDistance()
+dist.SetInputConnection(binary_image.GetOutputPort())
+dist.SetDimensionality(2)
+```
+
+Both filters produce floating-point output where each pixel's value represents the distance to the nearest foreground pixel.
+
+![Figure 6-19](images/Figure_6-19.png)
+
+*Figure 6–19 Morphological operations and frequency domain processing. From left: dilation of a binary image, opening (small features removed), FFT magnitude spectrum (log-scaled, centered), and Butterworth low-pass filtering (edges smoothed).*
+
+> **See also:** [IdealHighPass](https://examples.vtk.org/site/Python/ImageProcessing/IdealHighPass/) on the VTK Examples site.
