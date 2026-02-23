@@ -185,24 +185,23 @@ which sets the input to the filter aFilter to the output of the filter anotherFi
 
 **Pipeline Execution.** In the previous section we discussed the need to control the execution of the visualization pipeline. In this section we will expand our understanding of some key concepts regarding pipeline execution.
 
-As indicated in the previous section, the VTK visualization pipeline only executes when data is required for computation (lazy evaluation). Consider this example where we instantiate a reader object and ask for the number of points as shown below.
+As indicated in the previous section, the VTK visualization pipeline only executes when data is required for computation (lazy evaluation). Consider this example where we create a sphere source and ask for the number of points in its output:
 
 ```python
-from vtkmodules.vtkIOParallel import vtkMultiBlockPLOT3DReader
+from vtkmodules.vtkFiltersSources import vtkSphereSource
 
-reader = vtkMultiBlockPLOT3DReader()
-reader.SetXYZFileName("Data/combxyz.bin")
-reader.GetOutput().GetBlock(0)  # returns None
+sphere = vtkSphereSource()
+sphere.GetOutput().GetNumberOfPoints()  # returns 0
 ```
 
-the reader object will return `None` because the pipeline has not yet executed and the output contains no data, despite the fact that the data file contains thousands of points. However, if you call the `Update()` method first:
+The source returns 0 because the pipeline has not yet executed and the output contains no data, despite the fact that the source is fully configured. However, if you call the `Update()` method first:
 
 ```python
-reader.Update()
-reader.GetOutput().GetBlock(0).GetNumberOfPoints()  # returns 7194
+sphere.Update()
+sphere.GetOutput().GetNumberOfPoints()  # returns 50
 ```
 
-the reader object will return the correct number. In the first example, no computation has been requested, so the output is empty. In the second example, the `Update()` method forces execution of the pipeline, thereby forcing the reader to read the data from the file. Once the reader has executed, its output is populated with the data from the file.
+the source returns the correct number of points. In the first example, no computation has been requested, so the output is empty. In the second example, the `Update()` method forces execution of the pipeline, causing the source to generate its geometry. Once the source has executed, its output is populated with the generated data.
 
 Normally, you do not need to manually invoke Update() because the filters are connected into a visualization pipeline. In this case, when the actor receives a request to render itself, it forwards the method to its mapper, and the Update() method is automatically sent through the visualization pipeline. A high-level view of pipeline execution appears in Figure 3–6.
 
