@@ -735,6 +735,101 @@ In fact, the vtkDataSetMapper mapper uses vtkGeometryFilter internally to conver
 
 In addition, vtkGeometryFilter has methods that allows you to extract cells based on a range of point ids, cell ids, or whether the cells lie in a particular rectangular region in space. vtkGeometryFilter extracts pieces of datasets based on point and cell ids using the methods PointClippingOn(), SetPointMinimum(), SetPointMaximum() and CellClippingOn(), SetCellMinimum(), SetCellMaximum(). The minimum and maximum values specify a range of ids which are extracted. Also, you can use a rectangular region in space to limit what's extracted. Use the ExtentClippingOn() and SetExtent() methods to enable extent clipping and specify the extent. The extent consists of six values defining a bounding box in space—(x<sub>min</sub>, x<sub>max</sub>, y<sub>min</sub>, y<sub>max</sub>, z<sub>min</sub>, z<sub>max</sub>). You can use point, cell, and extent clipping in any combination. This is a useful feature when debugging data, or when you only want to look at a portion of it.
 
+### Thresholding
+
+Thresholding is one of the most fundamental filtering operations: it extracts the subset of cells (or points) from a dataset whose scalar values satisfy a criterion. VTK provides two complementary filters: `vtkThreshold`, which operates on cells and produces a `vtkUnstructuredGrid`, and `vtkThresholdPoints`, which operates on points and produces `vtkPolyData`.
+
+`vtkThreshold` supports three threshold modes, configured via `SetThresholdFunction()`:
+
+| Mode | Method | Keeps cells where scalar… |
+|------|--------|---------------------------|
+| `THRESHOLD_BETWEEN` | `SetLowerThreshold()` + `SetUpperThreshold()` | falls within [lower, upper] |
+| `THRESHOLD_LOWER` | `SetUpperThreshold()` | is ≤ upper |
+| `THRESHOLD_UPPER` | `SetLowerThreshold()` | is ≥ lower |
+
+By default, `vtkThreshold` uses point scalars to decide whether a cell passes. A cell passes when **all** its points satisfy the criterion (the `AllScalars` mode). Set `SetAllScalars(False)` to pass a cell when **any** point satisfies the criterion. You can also threshold on cell data instead of point data by using `SetInputArrayToProcess()`.
+
+The following example thresholds a sampled quadric to keep cells with scalars in [0.5, 1.0] (see `examples/threshold.py`).
+
+```python
+from vtkmodules.vtkCommonDataModel import vtkQuadric
+from vtkmodules.vtkFiltersCore import vtkThreshold
+from vtkmodules.vtkFiltersGeometry import vtkGeometryFilter
+from vtkmodules.vtkImagingHybrid import vtkSampleFunction
+
+quadric = vtkQuadric()
+quadric.SetCoefficients(0.5, 1.0, 0.2, 0.0, 0.1, 0.0, 0.0, 0.2, 0.0, 0.0)
+
+sample = vtkSampleFunction()
+sample.SetSampleDimensions(30, 30, 30)
+sample.SetImplicitFunction(quadric)
+sample.ComputeNormalsOff()
+
+thresh = vtkThreshold()
+thresh.SetInputConnection(sample.GetOutputPort())
+thresh.SetThresholdFunction(thresh.THRESHOLD_BETWEEN)
+thresh.SetLowerThreshold(0.5)
+thresh.SetUpperThreshold(1.0)
+
+# vtkThreshold always produces vtkUnstructuredGrid — convert for rendering
+surface = vtkGeometryFilter()
+surface.SetInputConnection(thresh.GetOutputPort())
+```
+
+For point-based thresholding, `vtkThresholdPoints` extracts only the points (as vertices) that pass. This is useful for scatter-plot-style visualizations. In modern VTK (9.6+), use `SetThresholdFunction()` and `SetUpperThreshold()`/`SetLowerThreshold()` rather than the deprecated `ThresholdByUpper()`/`ThresholdByLower()` methods.
+
+```python
+from vtkmodules.vtkFiltersCore import vtkThresholdPoints
+
+thresh_pts = vtkThresholdPoints()
+thresh_pts.SetInputConnection(sample.GetOutputPort())
+thresh_pts.SetThresholdFunction(thresh_pts.THRESHOLD_UPPER)
+thresh_pts.SetUpperThreshold(0.8)
+```
+
+> **See also:** [ThresholdCells](https://examples.vtk.org/site/Python/Meshes/ThresholdCells/) and [ThresholdPoints](https://examples.vtk.org/site/Python/Meshes/ThresholdPoints/) on the VTK Examples site.
+
+### Warping
+
+Warping displaces points in a dataset by scalar or vector values, turning abstract data into 3D surface deformations. Two filters are commonly used: `vtkWarpScalar` displaces points along a normal direction proportional to a scalar value, and `vtkWarpVector` displaces points by a vector field.
+
+**vtkWarpScalar.** This filter is especially useful for creating elevation maps from image data — each point is moved along its normal (or a specified direction) by an amount proportional to its scalar value. The `ScaleFactor` controls the magnitude of the displacement. If the input does not have normals, the displacement defaults to the Z direction.
+
+The following example creates a plane with elevation scalars and warps it into a 3D surface (see `examples/warp_scalar.py`).
+
+```python
+from vtkmodules.vtkFiltersCore import vtkElevationFilter
+from vtkmodules.vtkFiltersGeneral import vtkWarpScalar
+from vtkmodules.vtkFiltersSources import vtkPlaneSource
+
+plane = vtkPlaneSource()
+plane.SetResolution(40, 40)
+
+elevation = vtkElevationFilter()
+elevation.SetInputConnection(plane.GetOutputPort())
+elevation.SetLowPoint(0, 0, 0)
+elevation.SetHighPoint(0, 1, 0)
+elevation.SetScalarRange(0, 1)
+
+warp = vtkWarpScalar()
+warp.SetInputConnection(elevation.GetOutputPort())
+warp.SetScaleFactor(0.3)
+```
+
+**vtkWarpVector.** This filter displaces each point by its associated vector value. It is commonly used to visualize displacement fields from finite element analysis — the vectors represent how much each node moved under load.
+
+```python
+from vtkmodules.vtkFiltersGeneral import vtkWarpVector
+
+warp = vtkWarpVector()
+warp.SetInputConnection(reader.GetOutputPort())
+warp.SetScaleFactor(1.0)
+```
+
+The `ScaleFactor` scales the displacement vectors uniformly. Setting it to a larger value exaggerates the deformation for visualization purposes, while a value of 1.0 shows the actual displacement magnitude.
+
+> **See also:** [WarpScalar](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpScalar/), [WarpVector](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpVector/), and [WarpSurface](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpSurface/) on the VTK Examples site.
+
 ## 5.2 Visualizing Polygonal Data
 
 Polygonal data (vtkPolyData) is an important form of visualization data. Its importance is due to its use as the geometry interface into the graphics hardware/rendering engine. Other data types must be converted into polygonal data in order to be rendered (with the exception of vtkImageData which uses special imaging or volume rendering techniques). You may wish to refer to "Extract Cells as Polygonal Data" above to see how this conversion is performed. Polygonal data (vtkPolyData) consists of combinations of vertices and polyvertices; lines and polylines; triangles, quadrilaterals, and polygons; and triangle strips. Most filters (that input vtkPolyData) will process any combination of this data; however, some filters (like vtkDecimatePro and vtkTubeFilter) will only process portions of the data (triangle meshes and lines).
