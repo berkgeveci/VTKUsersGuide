@@ -320,6 +320,50 @@ streamer.SetIntegratorTypeToRungeKutta4()
 
 Notice that the example uses the source object vtkPointSource to create a spherical cloud of points, which are then set as the source to streamer. For every point (inside the input dataset) a streamline will be computed.
 
+### Evenly-Spaced Streamlines
+
+Choosing good seed positions for streamlines can be difficult. `vtkEvenlySpacedStreamlines2D` automates this process for 2D flows: given a single starting point, it generates a set of streamlines that are approximately uniformly spaced across the flow field. This produces coverage of the entire domain without manual seed placement.
+
+The following example creates a vortex vector field and uses evenly-spaced streamlines to visualize it (see `examples/evenly_spaced_streamlines.py`).
+
+```python
+from vtkmodules.vtkCommonCore import vtkDoubleArray
+from vtkmodules.vtkCommonDataModel import vtkImageData
+from vtkmodules.vtkFiltersFlowPaths import vtkEvenlySpacedStreamlines2D
+
+# Create a 2D vortex vector field on a 64x64 grid.
+dims = [64, 64, 1]
+image = vtkImageData()
+image.SetDimensions(dims)
+image.SetSpacing(1.0 / 63, 1.0 / 63, 1.0)
+
+vectors = vtkDoubleArray()
+vectors.SetNumberOfComponents(3)
+vectors.SetNumberOfTuples(dims[0] * dims[1])
+vectors.SetName("Velocity")
+
+cx, cy = 0.5, 0.5
+for j in range(dims[1]):
+    for i in range(dims[0]):
+        x = i * image.GetSpacing()[0]
+        y = j * image.GetSpacing()[1]
+        vectors.SetTuple3(j * dims[0] + i, -(y - cy), x - cx, 0.0)
+
+image.GetPointData().SetVectors(vectors)
+
+streamer = vtkEvenlySpacedStreamlines2D()
+streamer.SetInputData(image)
+streamer.SetStartPosition(0.5, 0.1, 0.0)
+streamer.SetSeparatingDistance(0.1)
+streamer.SetInitialIntegrationStep(0.5)
+streamer.SetIntegrationStepUnit(1)  # 1 = CELL_LENGTH_UNIT
+streamer.SetMaximumNumberOfSteps(500)
+```
+
+The `SeparatingDistance` controls the minimum spacing between adjacent streamlines — smaller values produce denser coverage. For time-varying vector fields, `vtkParticleTracer` traces particle paths through a sequence of time steps, which is useful for transient flow visualization.
+
+> **See also:** [StreamLines](https://examples.vtk.org/site/Python/VisualizationAlgorithms/StreamLines/) and [BluntStreamlines](https://examples.vtk.org/site/Python/VisualizationAlgorithms/BluntStreamlines/) on the VTK Examples site.
+
 ### Stream Surfaces
 
 Advanced users may want to use VTK's stream surface capability. Stream surfaces are generated in two parts. First, a rake or series of ordered points are used to generate a series of streamlines. Then, vtkRuledSurfaceFilter is used to create a surface from the streamlines. It is very important that the points (and hence streamlines) are ordered carefully because the vtkRuledSurfaceFilter assumes that the lines lie next to one another, and are within a specified distance (DistanceFactor) of the neighbor to the left and right. Otherwise, the surface tears or you can obtain poor results. The following script demonstrates how to create a stream surface (see `examples/stream_surface.py` and Figure 5–5).
@@ -371,6 +415,8 @@ actor.SetMapper(mapper)
 
 A nice feature of the vtkRuledSurfaceFilter is the ability to turn off strips if multiple lines are provided as input to the filter (the method SetOnRatio()). This helps understand the structure of the surface.
 
+Modern VTK also provides `vtkStreamSurface`, which directly generates a stream surface from a line seed without requiring the separate `vtkRuledSurfaceFilter` step. It uses a line source as the seed and produces a triangulated surface in a single filter.
+
 ### Cutting
 
 Cutting, or slicing, a dataset in VTK entails creating a "cross-section" through the dataset using any type of implicit function. For example, we can slice through a dataset with a plane to create a planar cut. The cutting surface interpolates the data as it cuts, which can then be visualized using any standard visualization technique. The result of cutting is always of type vtkPolyData. (Cutting a n-dimensional cell results in a (n-1)-dimensional output primitive. For example, cutting a tetrahedron creates either a triangle or quadrilateral.) In the following example, a combustor (structured grid) is cut with a plane as shown in Figure 5–6 (see `examples/cut_combustor.py`).
@@ -403,6 +449,31 @@ cut_actor.SetMapper(cut_mapper)
 ```
 
 vtkCutter requires that you specify an implicit function with which to cut. Also, you may wish to specify one or more cut values using the SetValue() or GenerateValues() methods. These values specify the value of the implicit function used to perform the cutting. (Typically the cutting value is zero, meaning that the cut surface is precisely on the implicit function. Values less than or greater than zero are implicit surfaces below and above the implicit surface. The cut value can also be thought of as a "distance" to the implicit surface, which is only strictly true for vtkPlane.)
+
+You can also cut with multiple planes simultaneously. The following example creates three orthogonal cutting planes through the center of a sampled dataset (see `examples/cut_unstructured.py`).
+
+```python
+from vtkmodules.vtkCommonDataModel import vtkPlane
+from vtkmodules.vtkFiltersCore import vtkCutter, vtkAppendPolyData
+
+# Assume 'sample' is a vtkSampleFunction producing a 3D scalar field.
+center = sample.GetOutput().GetCenter()
+append = vtkAppendPolyData()
+
+for normal in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
+    plane = vtkPlane()
+    plane.SetOrigin(center)
+    plane.SetNormal(normal)
+
+    cutter = vtkCutter()
+    cutter.SetInputConnection(sample.GetOutputPort())
+    cutter.SetCutFunction(plane)
+    append.AddInputConnection(cutter.GetOutputPort())
+```
+
+For large datasets, consider `vtkPlaneCutter` as a modern, high-performance alternative to `vtkCutter` when cutting with a plane. `vtkPlaneCutter` is optimized for plane cuts specifically and can take advantage of SMP (multithreading) acceleration. It accepts any `vtkDataSet` as input and produces `vtkPolyData` on output.
+
+> **See also:** [Cutter](https://examples.vtk.org/site/Python/VisualizationAlgorithms/Cutter/) and [CutStructuredGrid](https://examples.vtk.org/site/Python/VisualizationAlgorithms/CutStructuredGrid/) on the VTK Examples site.
 
 ### Merging Data
 
@@ -868,6 +939,45 @@ rest_actor.GetProperty().SetRepresentationToWireframe()
 ```
 
 The GenerateClippedOutputOn() method causes the filter to create a second output: the data that was clipped away. This output is shown in wireframe in the figure. If the SetValue() method is used to change the clip value, the implicit function will cut at a point parallel to the original plane, but above or below it. (You could also change the definition of vtkPlane to achieve the same result.)
+
+### Clipping Volume Meshes
+
+The previous example uses `vtkClipPolyData`, which only accepts polygonal data. To clip volume meshes — `vtkImageData`, `vtkStructuredGrid`, `vtkUnstructuredGrid`, or any other `vtkDataSet` — use `vtkTableBasedClipDataSet`. This filter is the modern, high-performance replacement for `vtkClipDataSet`; it uses pre-computed triangulation tables for fast clipping of all standard cell types.
+
+The following example clips a sampled quadric function (on a regular 3D grid) with a plane (see `examples/clip_volume.py`).
+
+```python
+from vtkmodules.vtkCommonDataModel import vtkPlane, vtkQuadric
+from vtkmodules.vtkFiltersGeneral import vtkTableBasedClipDataSet
+from vtkmodules.vtkFiltersGeometry import vtkGeometryFilter
+from vtkmodules.vtkImagingHybrid import vtkSampleFunction
+
+quadric = vtkQuadric()
+quadric.SetCoefficients(0.5, 1.0, 0.2, 0.0, 0.1, 0.0, 0.0, 0.2, 0.0, 0.0)
+
+sample = vtkSampleFunction()
+sample.SetSampleDimensions(30, 30, 30)
+sample.SetImplicitFunction(quadric)
+sample.ComputeNormalsOff()
+sample.Update()
+
+plane = vtkPlane()
+plane.SetOrigin(sample.GetOutput().GetCenter())
+plane.SetNormal(1, 0, 0)
+
+clipper = vtkTableBasedClipDataSet()
+clipper.SetInputConnection(sample.GetOutputPort())
+clipper.SetClipFunction(plane)
+clipper.SetValue(0.0)
+
+# Convert to polydata for rendering
+surface = vtkGeometryFilter()
+surface.SetInputConnection(clipper.GetOutputPort())
+```
+
+The output is always a `vtkUnstructuredGrid`, so follow with `vtkGeometryFilter` or use `vtkDataSetMapper` to render it. `vtkTableBasedClipDataSet` also supports `GenerateClippedOutputOn()` to retrieve the clipped-away portion, just like `vtkClipPolyData`.
+
+> **See also:** [ClipVolume](https://examples.vtk.org/site/Python/Meshes/ClipDataSetWithPolyData/) and [SolidClip](https://examples.vtk.org/site/Python/Meshes/SolidClip/) on the VTK Examples site.
 
 ### Generate Texture Coordinates
 

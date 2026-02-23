@@ -130,15 +130,183 @@ part_mapper.SetInputConnection(part.GetOutputPort())
 part_actor = vtkLODActor()
 part_actor.SetMapper(part_mapper)
 ```
-Notice the use of the vtkLODActor. This actor changes its representation to maintain interactive performance. Its default behavior is to create a point cloud and wireframe, bounding-box outline to represent the intermediate and low-level representations. (See "Level-Of-Detail Actors" in Section 4.6 for more information.) The model used in this example is small enough that on most computers today you will only see the high-level representation (the full geometry of the model).
+Notice the use of the vtkLODActor. This actor changes its representation to maintain interactive performance. Its default behavior is to create a point cloud and wireframe, bounding-box outline to represent the intermediate and low-level representations. (See "Level-Of-Detail Actors" in Section 4.7 for more information.) The model used in this example is small enough that on most computers today you will only see the high-level representation (the full geometry of the model).
 
 Many of the readers do not sense when the input file(s) change and re-execute. For example, if the file 42400-IDGH.stl changes, the pipeline will not re-execute. You can manually modify objects by invoking the Modified() method on them. This will cause the filter to re-execute, as well as all filters downstream of it.
 
 The Visualization Toolkit has limited, built-in modeling capabilities. If you want to use VTK to edit and manipulate complex models (e.g., those created by a solid modeler or modeling tool), you'll typically use a reader (see Chapter 12) to interface to the data. (Another option is importers, which are used to ingest entire scenes. See Chapter 12 for more information.)
 
-## 4.2 Using VTK Interactors
+## 4.2 Filtering Data
 
-Once you've visualized your data, you typically want to interact with it. The Visualization Toolkit offers several approaches to do this. The first approach is to use the built in class vtkRenderWindowInteractor. The second approach is to create your own interactor by specifying event bindings. And don't forget that if you are using an interpreted language you can type commands at run-time. You may also wish to refer to Section 4.8 to see how to select data from the screen.
+The previous example pipelines consisted of a source and mapper object; the pipeline had no filters. In this section we show how to add filters into the pipeline. The examples here use `vtkPolyData` for simplicity, but VTK supports many other dataset types — `vtkImageData`, `vtkRectilinearGrid`, `vtkStructuredGrid`, `vtkUnstructuredGrid`, and more. Refer to Section 3.1 for the dataset hierarchy and Chapter 5 for filters that operate on these other types.
+
+Filters are connected by using the `SetInputConnection()` and `GetOutputPort()` methods. For example, we can modify the script in "Reader Source Object" above to shrink the polygons that make up the model. The script is shown below. (Only the pipeline and other pertinent objects are shown.)
+
+```python
+from vtkmodules.vtkIOGeometry import vtkSTLReader
+from vtkmodules.vtkFiltersGeneral import vtkShrinkPolyData
+from vtkmodules.vtkRenderingCore import vtkPolyDataMapper
+from vtkmodules.vtkRenderingLOD import vtkLODActor
+
+part = vtkSTLReader()
+part.SetFileName("42400-IDGH.stl")
+
+shrink = vtkShrinkPolyData()
+shrink.SetInputConnection(part.GetOutputPort())
+shrink.SetShrinkFactor(0.85)
+
+part_mapper = vtkPolyDataMapper()
+part_mapper.SetInputConnection(shrink.GetOutputPort())
+
+part_actor = vtkLODActor()
+part_actor.SetMapper(part_mapper)
+```
+As you can see, creating a visualization pipeline is simple. You need to select the right classes for the task at hand, make sure that the input and output type of connected filters are compatible, and set the necessary instance variables. (Input and output types are compatible when the output dataset type of a source or filter is acceptable as input to the next filter or mapper in the pipeline. The output dataset type must either match the input dataset type exactly or be a subclass of it.)
+
+![Figure 4-3](images/Figure_4-3.png)
+
+*Figure 4–3 Filtering data. Here we use a filter to shrink the polygons forming the model towards their centroid.*
+
+### Thresholding
+
+Thresholding extracts cells whose scalar values fall within a specified range. The filter `vtkThreshold` accepts any `vtkDataSet` and produces a `vtkUnstructuredGrid` containing only the cells that pass the test. Three threshold modes are available: `THRESHOLD_BETWEEN` (keep values in a range), `THRESHOLD_LOWER` (keep values below an upper bound), and `THRESHOLD_UPPER` (keep values above a lower bound).
+
+The following example samples a quadric implicit function on a 3D grid, then thresholds to keep only the cells with scalar values between 0.5 and 1.0 (see `examples/threshold_data.py`).
+
+```python
+from vtkmodules.vtkCommonDataModel import vtkQuadric
+from vtkmodules.vtkFiltersCore import vtkThreshold
+from vtkmodules.vtkFiltersGeometry import vtkGeometryFilter
+from vtkmodules.vtkImagingHybrid import vtkSampleFunction
+
+quadric = vtkQuadric()
+quadric.SetCoefficients(0.5, 1.0, 0.2, 0.0, 0.1, 0.0, 0.0, 0.2, 0.0, 0.0)
+
+sample = vtkSampleFunction()
+sample.SetSampleDimensions(30, 30, 30)
+sample.SetImplicitFunction(quadric)
+sample.ComputeNormalsOff()
+
+thresh = vtkThreshold()
+thresh.SetInputConnection(sample.GetOutputPort())
+thresh.SetThresholdFunction(thresh.THRESHOLD_BETWEEN)
+thresh.SetLowerThreshold(0.5)
+thresh.SetUpperThreshold(1.0)
+
+# Convert unstructured grid to polydata for rendering
+surface = vtkGeometryFilter()
+surface.SetInputConnection(thresh.GetOutputPort())
+```
+
+Because `vtkThreshold` always outputs `vtkUnstructuredGrid`, you typically follow it with `vtkGeometryFilter` (or use `vtkDataSetMapper`) to render the result. See Chapter 5 for a deeper treatment of thresholding including point-based thresholding with `vtkThresholdPoints`.
+
+### Contouring
+
+Contouring generates lines or surfaces of constant scalar value. In VTK, `vtkContourFilter` handles contouring for any dataset type. A brief example is shown below — see Section 5.1 for a full discussion.
+
+```python
+from vtkmodules.vtkFiltersCore import vtkContourFilter
+
+contours = vtkContourFilter()
+contours.SetInputConnection(sample.GetOutputPort())
+contours.GenerateValues(5, 0.0, 1.2)
+```
+
+### Clipping
+
+Clipping uses an implicit function (such as a plane) to separate a dataset into two halves. `vtkClipPolyData` clips polygonal meshes; for volume meshes, use `vtkTableBasedClipDataSet` (see Chapter 5). The following example clips a sphere with a plane through the origin (see `examples/clip_sphere.py`).
+
+```python
+from vtkmodules.vtkCommonDataModel import vtkPlane
+from vtkmodules.vtkFiltersCore import vtkClipPolyData
+from vtkmodules.vtkFiltersSources import vtkSphereSource
+
+sphere = vtkSphereSource()
+sphere.SetThetaResolution(30)
+sphere.SetPhiResolution(30)
+
+plane = vtkPlane()
+plane.SetOrigin(0, 0, 0)
+plane.SetNormal(1, 0, 0)
+
+clipper = vtkClipPolyData()
+clipper.SetInputConnection(sphere.GetOutputPort())
+clipper.SetClipFunction(plane)
+clipper.GenerateClippedOutputOn()
+```
+
+The `GenerateClippedOutputOn()` method causes the filter to produce a second output containing the clipped-away portion, accessible via `clipper.GetClippedOutputPort()`.
+
+### Computing Derived Quantities
+
+The `vtkArrayCalculator` filter evaluates mathematical expressions on data arrays to produce new derived arrays. It supports standard functions (`sin`, `cos`, `exp`, `sqrt`, `log`, `abs`, etc.) and operations on scalars and vectors. The following example computes the sine of an elevation field (see `examples/calculator.py`).
+
+```python
+from vtkmodules.vtkFiltersCore import vtkArrayCalculator, vtkElevationFilter
+from vtkmodules.vtkFiltersSources import vtkPlaneSource
+
+plane = vtkPlaneSource()
+plane.SetResolution(40, 40)
+
+elevation = vtkElevationFilter()
+elevation.SetInputConnection(plane.GetOutputPort())
+elevation.SetLowPoint(0, 0, 0)
+elevation.SetHighPoint(0, 1, 0)
+elevation.SetScalarRange(0, 1)
+
+calc = vtkArrayCalculator()
+calc.SetInputConnection(elevation.GetOutputPort())
+calc.AddScalarArrayName("Elevation")
+calc.SetFunction("sin(Elevation * 3.14159265)")
+calc.SetResultArrayName("SineElevation")
+```
+
+The result array "SineElevation" is added to the output's point data. You can then color the surface by selecting it with `mapper.SelectColorArray("SineElevation")`.
+
+For a thorough treatment of filtering — including warping, connectivity analysis, resampling, and more — refer to Chapter 5.
+
+> **See also:** The [VTK Examples](https://examples.vtk.org/site/Python/) collection includes complete, runnable scripts for [ClipVolume](https://examples.vtk.org/site/Python/Meshes/ClipDataSetWithPolyData/), [ThresholdCells](https://examples.vtk.org/site/Python/Meshes/ThresholdCells/), [ArrayCalculator](https://examples.vtk.org/site/Python/Utilities/ArrayCalculator/), and many other filters.
+
+## 4.3 Writing Data
+
+After processing data with VTK, you will often want to save the results to a file. VTK provides writers for all its native formats as well as common exchange formats like STL and PLY. Writers terminate a pipeline branch — they consume data but produce no output.
+
+The XML-based formats (`.vtp`, `.vtu`, `.vti`, `.vtr`, `.vts`) are the preferred choice for VTK-to-VTK workflows. They support binary encoding, compression, and random-access reading of pieces. The legacy `.vtk` format is simpler and human-readable but lacks these features. For interoperability with CAD and 3D printing tools, `vtkSTLWriter` writes the widely supported STL format.
+
+```python
+from vtkmodules.vtkFiltersSources import vtkSphereSource
+from vtkmodules.vtkIOGeometry import vtkSTLWriter
+from vtkmodules.vtkIOLegacy import vtkPolyDataWriter
+from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
+
+sphere = vtkSphereSource()
+sphere.SetThetaResolution(20)
+sphere.SetPhiResolution(20)
+
+# XML format (.vtp) — preferred for VTK workflows
+xml_writer = vtkXMLPolyDataWriter()
+xml_writer.SetFileName("sphere.vtp")
+xml_writer.SetInputConnection(sphere.GetOutputPort())
+xml_writer.Write()
+
+# STL format — widely used for 3D printing and CAD exchange
+stl_writer = vtkSTLWriter()
+stl_writer.SetFileName("sphere.stl")
+stl_writer.SetInputConnection(sphere.GetOutputPort())
+stl_writer.Write()
+
+# Legacy VTK format (.vtk) — simple, human-readable
+legacy_writer = vtkPolyDataWriter()
+legacy_writer.SetFileName("sphere.vtk")
+legacy_writer.SetInputConnection(sphere.GetOutputPort())
+legacy_writer.Write()
+```
+
+Other common writers include `vtkXMLUnstructuredGridWriter` (`.vtu`) for unstructured grids and `vtkXMLImageDataWriter` (`.vti`) for image data. See Chapter 12 for comprehensive coverage of VTK's I/O capabilities, including parallel writers and third-party format support.
+
+## 4.4 Using VTK Interactors
+
+Once you've visualized your data, you typically want to interact with it. The Visualization Toolkit offers several approaches to do this. The first approach is to use the built in class vtkRenderWindowInteractor. The second approach is to create your own interactor by specifying event bindings. And don't forget that if you are using an interpreted language you can type commands at run-time. You may also wish to refer to Section 4.9 to see how to select data from the screen.
 
 ### vtkRenderWindowInteractor
 The simplest way to interact with your data is to instantiate vtkRenderWindowInteractor. This class responds to a pre-defined set of events and actions and provides a way to override the default actions. vtkRenderWindowInteractor allows you to control the camera and actors and offers two interaction styles: position sensitive (i.e., joystick mode) and motion sensitive (i.e., trackball mode). (More about interactor styles in the next section.)
@@ -153,7 +321,7 @@ vtkRenderWindowInteractor responds to the following events in the render window.
 - Keypress 3 — Toggle the render window into and out of stereo mode. By default, red-blue stereo pairs are created. Some systems support Crystal Eyes LCD stereo glasses; you have to invoke SetStereoTypeToCrystalEyes() on the rendering window.
 - Keypress e/q — Exit or quit the application.
 - Keypress f — Fly-to the point under the cursor. This sets the focal point and allows rotations around that point.
-- Keypress p — Perform a pick operation. The render window interactor has an internal instance of vtkPropPicker that it uses to pick. See Section 4.8 for more information about picking.
+- Keypress p — Perform a pick operation. The render window interactor has an internal instance of vtkPropPicker that it uses to pick. See Section 4.9 for more information about picking.
 - Keypress r — Reset the camera view along the current view direction. Centers the actors and moves the camera so that all actors are visible.
 - Keypress s — Modify the representation of all actors so that they are surfaces.
 - Keypress u — Invoke the user-defined method. Typically, this keypress will bring up an interactor that you can type commands into.
@@ -161,9 +329,9 @@ vtkRenderWindowInteractor responds to the following events in the render window.
 
 The default interaction style is position sensitive (i.e., joystick style)—that is, it manipulates the camera or actor and renders continuously as long as a mouse button is pressed. If you don't like the default behavior, you can change it or write your own. (See Chapter 13 for information about writing your own style.)
 
-vtkRenderWindowInteractor has other useful features. Invoking LightFollowCameraOn() (the default behavior) causes the light position and focal point to be synchronized with the camera position and focal point (i.e., a "headlight" is created). Of course, this can be turned off with LightFollowCameraOff(). A callback that responds to the "u" keypress can be added with the AddObserver() method for the UserEvent. It is also possible to set several pick-related methods. AddObserver("StartPickEvent", ...) defines a method to be called prior to picking, and AddObserver("EndPickEvent", ...) defines a method after the pick has been performed. (Please see Section 3.2 for more information on defining user methods.) You can also specify an instance of a subclass of vtkAbstractPicker to use via the SetPicker() method. (See Section 4.8.)
+vtkRenderWindowInteractor has other useful features. Invoking LightFollowCameraOn() (the default behavior) causes the light position and focal point to be synchronized with the camera position and focal point (i.e., a "headlight" is created). Of course, this can be turned off with LightFollowCameraOff(). A callback that responds to the "u" keypress can be added with the AddObserver() method for the UserEvent. It is also possible to set several pick-related methods. AddObserver("StartPickEvent", ...) defines a method to be called prior to picking, and AddObserver("EndPickEvent", ...) defines a method after the pick has been performed. (Please see Section 3.2 for more information on defining user methods.) You can also specify an instance of a subclass of vtkAbstractPicker to use via the SetPicker() method. (See Section 4.9.)
 
-If you are using a prop that adjusts rendering quality based on desired interactivity, you may wish to set the desired frame rate via SetDesiredUpdateRate() in the interactor. Normally, this is handled automatically. (When the mouse buttons are activated, the desired update rate is increased; when the mouse button is released, the desired update rate is set back down.) Refer to "Level-Of-Detail Actors" in Section 4.6, "vtkLODProp3D" in Section 4.6, and Chapter 7 for further information on how props and their associated mappers may adjust render style to achieve a desired frame rate.
+If you are using a prop that adjusts rendering quality based on desired interactivity, you may wish to set the desired frame rate via SetDesiredUpdateRate() in the interactor. Normally, this is handled automatically. (When the mouse buttons are activated, the desired update rate is increased; when the mouse button is released, the desired update rate is set back down.) Refer to "Level-Of-Detail Actors" in Section 4.7, "vtkLODProp3D" in Section 4.7, and Chapter 7 for further information on how props and their associated mappers may adjust render style to achieve a desired frame rate.
 
 We've seen how to use vtkRenderWindowInteractor previously, here's a recapitulation.
 ```python
@@ -172,7 +340,7 @@ interactor.SetRenderWindow(render_window)
 ```
 
 ### Interactor Styles
-There are two distinctly different ways to control interaction style in VTK. The first is to use a subclass of vtkInteractorStyle, either one supplied with the system or one that you write. The second method is to add observers that watch for events on the vtkRenderWindowInteractor and define your own set of callbacks (or commands) to implement the style. (Note: 3D widgets are another, more complex way to interact with data in the scene. See "3D Widgets" in Section 4.13 for more information.)
+There are two distinctly different ways to control interaction style in VTK. The first is to use a subclass of vtkInteractorStyle, either one supplied with the system or one that you write. The second method is to add observers that watch for events on the vtkRenderWindowInteractor and define your own set of callbacks (or commands) to implement the style. (Note: 3D widgets are another, more complex way to interact with data in the scene. See "3D Widgets" in Section 4.14 for more information.)
 
 ### vtkInteractorStyle
 The class vtkRenderWindowInteractor can support different interaction styles. When you type "t" or "j" in the interactor (see the previous section) you are changing between trackball and joystick interaction styles. The way this works is that vtkRenderWindowInteractor translates window-system-specific events it receives (e.g., mouse button press, mouse motion, keyboard events) to VTK events such as MouseMoveEvent, StartEvent, and so on. (See Section 3.2 for related information.) Different styles then observe particular events and perform the action(s) appropriate to the event. To set the style, use the `vtkRenderWindowInteractor::SetInteractorStyle()` method. For example:
@@ -249,38 +417,7 @@ interactor.AddObserver("KeyPressEvent", on_keypress)
 ```
 Note that a key step in this example is disabling the default interaction style by passing `None` to SetInteractorStyle(). Observers are then added to watch for particular events which are tied to the appropriate Python callback functions.
 
-## 4.3 Filtering Data
-
-The previous example pipelines consisted of a source and mapper object; the pipeline had no filters. In this section we show how to add a filter into the pipeline.
-
-Filters are connected by using the SetInputConnection() and GetOutputPort() methods. For example, we can modify the script in "Reader Source Object" above to shrink the polygons that make up the model. The script is shown below. (Only the pipeline and other pertinent objects are shown.)
-
-```python
-from vtkmodules.vtkIOGeometry import vtkSTLReader
-from vtkmodules.vtkFiltersGeneral import vtkShrinkPolyData
-from vtkmodules.vtkRenderingCore import vtkPolyDataMapper
-from vtkmodules.vtkRenderingLOD import vtkLODActor
-
-part = vtkSTLReader()
-part.SetFileName("42400-IDGH.stl")
-
-shrink = vtkShrinkPolyData()
-shrink.SetInputConnection(part.GetOutputPort())
-shrink.SetShrinkFactor(0.85)
-
-part_mapper = vtkPolyDataMapper()
-part_mapper.SetInputConnection(shrink.GetOutputPort())
-
-part_actor = vtkLODActor()
-part_actor.SetMapper(part_mapper)
-```
-As you can see, creating a visualization pipeline is simple. You need to select the right classes for the task at hand, make sure that the input and output type of connected filters are compatible, and set the necessary instance variables. (Input and output types are compatible when the output dataset type of a source or filter is acceptable as input to the next filter or mapper in the pipeline. The output dataset type must either match the input dataset type exactly or be a subclass of it.)
-
-![Figure 4-3](images/Figure_4-3.png)
-
-*Figure 4–3 Filtering data. Here we use a filter to shrink the polygons forming the model towards their centroid.*
-
-## 4.4 Controlling The Camera
+## 4.5 Controlling The Camera
 
 You may have noticed that in the proceeding scripts no cameras or lights were instantiated. If you're familiar with 3D graphics, you know that lights and cameras are necessary to render objects. In VTK, if lights and cameras are not directly created, the renderer automatically instantiates them.
 
@@ -345,7 +482,7 @@ Another common requirement of applications is the capability to save and restore
 
 In some cases you may need to store additional information. For example, if the camera view angle (or parallel scale) is set, you'll need to save this. Or, if you are using the camera for stereo viewing, the EyeAngle and Stereo flags are required.
 
-## 4.5 Controlling Lights
+## 4.6 Controlling Lights
 
 Lights are easier to control than cameras. The most frequently used methods are SetPosition(), SetFocalPoint(), and SetColor(). The position and focal point of the light control the direction in which the light points. The color of the light is expressed as an RGB vector. Also, lights can be turned on and off via the SwitchOn() and SwitchOff() methods, and the brightness of the light can be set with the SetIntensity() method.
 
@@ -362,12 +499,13 @@ light.SetFocalPoint(camera.GetFocalPoint())
 light.SetPosition(camera.GetPosition())
 renderer.AddLight(light)
 ```
-Here we've created a red headlight: a light located at the camera's position and pointing towards the camera's focal point. This is a useful trick, and is used by the interactive renderer to position the light as the camera moves. (See Section 4.2.)
+Here we've created a red headlight: a light located at the camera's position and pointing towards the camera's focal point. This is a useful trick, and is used by the interactive renderer to position the light as the camera moves. (See Section 4.4.)
+
 
 ### Positional Lights
 It is possible to create positional (i.e., spot lights) by using the PositionalOn() method. This method is used in conjunction with the SetConeAngle() method to control the spread of the spot. A cone angle of 180 degrees indicates that no spot light effects will be applied (i.e., no truncated light cone), only the effects of position.
 
-## 4.6 Controlling 3D Props
+## 4.7 Controlling 3D Props
 
 Objects in VTK that are to be drawn in the render window are generically known as "props." (The word prop comes from the vocabulary of theater — a prop is something that appears on stage.) There are several different types of props including vtkProp3D and vtkActor. vtkProp3D is an abstract superclass for those types of props existing in 3D space. The class vtkActor is a type of vtkProp3D whose geometry is defined by analytic primitives such as polygons and lines.
 
@@ -479,9 +617,9 @@ pop_actor.SetMapper(pop_mapper)
 pop_actor.GetProperty().SetOpacity(0.3)
 pop_actor.GetProperty().SetColor(0.9, 0.9, 0.9)
 ```
-Please note that transparency is implemented in the rendering library using an alpha-blending process. This process requires that polygons are rendered in the correct order. In practice, this is very difficult to achieve, especially if you have multiple transparent actors. To order polygons, you should add transparent actors to the end of renderer's list of actors (i.e., add them last). Also, you can use the filter vtkDepthSortPolyData to sort polygons along the view vector. For more information on this topic see Section 4.15.
+Please note that transparency is implemented in the rendering library using an alpha-blending process. This process requires that polygons are rendered in the correct order. In practice, this is very difficult to achieve, especially if you have multiple transparent actors. To order polygons, you should add transparent actors to the end of renderer's list of actors (i.e., add them last). Also, you can use the filter vtkDepthSortPolyData to sort polygons along the view vector. For more information on this topic see Section 4.16.
 
-**Miscellaneous Features.** Actors have several other important features. You can control whether an actor is visible with the VisibilityOn() and VisibilityOff() methods. If you don't want to pick an actor during a picking operation, use the PickableOff() method. (See Section 4.8 for more information about picking.) Actors also have a pick event that can be invoked when they are picked. Additionally you can get the axis-aligned bounding box of actor with the GetBounds() method.
+**Miscellaneous Features.** Actors have several other important features. You can control whether an actor is visible with the VisibilityOn() and VisibilityOff() methods. If you don't want to pick an actor during a picking operation, use the PickableOff() method. (See Section 4.9 for more information about picking.) Actors also have a pick event that can be invoked when they are picked. Additionally you can get the axis-aligned bounding box of actor with the GetBounds() method.
 
 ### Level-Of-Detail Actors
 One major problem with graphics systems is that they often become too slow for interactive use. To handle this problem, VTK uses level-of-detail actors to achieve acceptable rendering performance at the cost of lower-resolution representations.
@@ -571,7 +709,7 @@ renderer.AddActor(cone_actor)
 ```
 Notice how we use vtkAssembly's AddPart() method to build the hierarchies. Assemblies can be nested arbitrarily deeply as long as there are not any self-referencing cycles. Note that vtkAssembly is a subclass of vtkProp3D, so it has no notion of properties or of an associated mapper. Therefore, the leaf nodes of the vtkAssembly hierarchy must carry information about material properties (color, etc.) and any associated geometry. Actors may also be used by more than one assembly (notice how cone_actor is used in the assembly and as an actor). Also, the renderer's AddActor() method is used to associate the top level of the assembly with the renderer; those actors at lower levels in the assembly hierarchy do not need to be added to the renderer since they are recursively rendered.
 
-You may be wondering how to distinguish the use of an actor relative to its context if an actor is used in more than one assembly, or is mixed with an assembly as in the example above. (This is particularly important in activities like picking, where the user may need to know which vtkProp was picked as well as the context in which it was picked.) We address this issue along with the introduction of the class vtkAssemblyPath, which is an ordered list of vtkProps with associated transformation matrices (if any), in detail in Section 4.8.
+You may be wondering how to distinguish the use of an actor relative to its context if an actor is used in more than one assembly, or is mixed with an assembly as in the example above. (This is particularly important in activities like picking, where the user may need to know which vtkProp was picked as well as the context in which it was picked.) We address this issue along with the introduction of the class vtkAssemblyPath, which is an ordered list of vtkProps with associated transformation matrices (if any), in detail in Section 4.9.
 
 ### Volumes
 
@@ -594,7 +732,7 @@ Basically, you create different mappers each corresponding to a different render
 
 vtkLODProp3D measures the time it takes to render each LOD and sorts them appropriately. Then, depending on the render window's desired update rate, vtkLODProp3D selects the appropriate level to render. See Chapter 7 for more information.
 
-## 4.7 Using Texture
+## 4.8 Using Texture
 
 Texture mapping is a powerful graphics tool for creating realistic and compelling visualizations. The basic idea behind 2D texture mapping is that images can be "pasted" onto a surface during the rendering process, thereby creating richer and more detailed images. Texture mapping requires three pieces of information: a surface to apply the texture to; a texture map, which in VTK is a vtkImageData dataset (i.e., a 2D image); and texture coordinates, which control the positioning of the texture on the surface.
 
@@ -629,7 +767,7 @@ plane_actor.SetTexture(a_texture)
 
 Often times texture coordinates are not available, usually because they are not generated in the pipeline. If you need to generate texture coordinates, refer to Chapter 5. Although some older graphics cards have limitations on the dimensions of textures (e.g. they must be a power of two and less than 1024 on a side), VTK allows arbitrarily sized textures. At run time, VTK will query the graphics system to determine its capabilities, and will automatically resample your texture to meet the card's requirements.
 
-## 4.8 Picking
+## 4.9 Picking
 
 Picking is a common visualization task. Picking is used to select data and actors or to query underlying data values. A pick is made when a display position (i.e., pixel coordinate) is selected and used to invoke vtkAbstractPicker's Pick() method. Depending on the type of picking class, the information returned from the pick may be as simple as an x-y-z global coordinate, or it may include cell ids, point ids, cell parametric coordinates, the instance of vtkProp that was picked, and/or assembly paths. The syntax of the pick method is as follows.
 
@@ -668,7 +806,7 @@ Several events are defined to interact with the pick operation. The picker invok
 An understanding of the class vtkAssemblyPath is essential if you are to perform picking in a scene with different types of vtkProp's, especially if the scene contains instances of vtkAssembly. vtkAssemblyPath is simply an ordered list of vtkAssemblyNode's, where each node contains a pointer to a vtkProp, as well as an optional vtkMatrix4x4. The order of the list is important: the start of the list represents the root, or top level node in an assembly hierarchy, while the end of the list represents a leaf node in an assembly hierarchy. The ordering of the nodes also affects the associated matrix. Each matrix is a concatenation of the node's vtkProp's matrix with the previous matrix in the list. Thus, for a given vtkAssemblyNode, the associated vtkMatrix4x4 represents the position and orientation of the vtkProp (assuming that the vtkProp is initially untransformed).
 
 ### Example
-Typically, picking is automatically managed by vtkRenderWindowInteractor (see Section 4.2 for more information about interactors). For example, when pressing the p key, vtkRenderWindowInteractor invokes a pick with its internal instance of vtkPropPicker. You can then ask the vtkRenderWindowInteractor for its picker, and gather the information you need. You can also specify a particular vtkAbstractPicker instance for vtkRenderWindowInteractor to use, as the following script illustrates. The results on a sample data set are shown in Figure 4–6.
+Typically, picking is automatically managed by vtkRenderWindowInteractor (see Section 4.4 for more information about interactors). For example, when pressing the p key, vtkRenderWindowInteractor invokes a pick with its internal instance of vtkPropPicker. You can then ask the vtkRenderWindowInteractor for its picker, and gather the information you need. You can also specify a particular vtkAbstractPicker instance for vtkRenderWindowInteractor to use, as the following script illustrates. The results on a sample data set are shown in Figure 4–6.
 
 ![Figure 4-6](images/Figure_4-6.png)
 
@@ -714,9 +852,9 @@ interactor = vtkRenderWindowInteractor()
 interactor.SetRenderWindow(render_window)
 interactor.SetPicker(picker)
 ```
-This example uses a vtkTextMapper to draw the world coordinate of the pick on the screen. (See Section 4.11 for more information.) Notice that we register the EndPickEvent to perform setup after the pick occurs. The callback is configured to invoke the annotate_pick() function when picking is complete.
+This example uses a vtkTextMapper to draw the world coordinate of the pick on the screen. (See Section 4.12 for more information.) Notice that we register the EndPickEvent to perform setup after the pick occurs. The callback is configured to invoke the annotate_pick() function when picking is complete.
 
-## 4.9 vtkCoordinate and Coordinate Systems
+## 4.10 vtkCoordinate and Coordinate Systems
 
 The Visualization Toolkit supports several different coordinate systems, and the class vtkCoordinate manages transformations between them. The supported coordinate systems are as follows.
 
@@ -730,9 +868,9 @@ The Visualization Toolkit supports several different coordinate systems, and the
 
 The class vtkCoordinate can be used to transform between coordinate systems and can be linked together to form "relative" or "offset" coordinate values. Refer to the next section for an example of using vtkCoordinate in an application.
 
-## 4.10 Controlling vtkActor2D
+## 4.11 Controlling vtkActor2D
 
-vtkActor2D is analogous to vtkActor except that it draws on the overlay plane and does not have a 4x4 transformation matrix associated with it. Like vtkActor, vtkActor2D refers to a mapper (vtkMapper2D) and a property object (vtkProperty2D). The most difficult part when working with vtkActor2D is positioning it. To do that, the class vtkCoordinate is used. (See Section 4.9.) The following script shows how to use the vtkCoordinate object.
+vtkActor2D is analogous to vtkActor except that it draws on the overlay plane and does not have a 4x4 transformation matrix associated with it. Like vtkActor, vtkActor2D refers to a mapper (vtkMapper2D) and a property object (vtkProperty2D). The most difficult part when working with vtkActor2D is positioning it. To do that, the class vtkCoordinate is used. (See Section 4.10.) The following script shows how to use the vtkCoordinate object.
 
 ![Figure 4-7](images/Figure_4-7.png)
 
@@ -747,7 +885,7 @@ banner_actor.GetPositionCoordinate().SetValue(0.5, 0.5)
 ```
 What's done in this script is to access the coordinate object and define its coordinate system. Then the appropriate value is set for that coordinate system. In this script a normalized display coordinate system is used, so display coordinates range from zero to one, and the values (0.5, 0.5) are set to position the vtkActor2D in the middle of the rendering window. vtkActor2D also provides a convenience method, SetDisplayPosition(), that sets the coordinate system to DISPLAY and uses the input parameters to set the vtkActor2D's position using pixel offsets in the render window. The example in the following section shows how the method is used.
 
-## 4.11 Text Annotation
+## 4.12 Text Annotation
 
 The Visualization Toolkit offers two ways to annotate images. First, text (and graphics) can be rendered on top of the underlying 3D graphics window (often referred to as rendering in the overlay plane). Second, text can be created as 3D polygonal data and transformed and displayed as any other 3D graphics object. We refer to this as 2D and 3D annotation, respectively. See Figure 4–7 to see the difference.
 
@@ -822,7 +960,7 @@ text_actor_l.SetMapper(text_mapper_l)
 text_actor_l.GetPositionCoordinate().SetCoordinateSystemToNormalizedDisplay()
 text_actor_l.GetPositionCoordinate().SetValue(0.05, 0.5)
 ```
-Note the use of the vtkCoordinate object (obtained by invoking the GetPositionCoordinate() method) to control the position of the actor in the normalized display coordinate system. See Section 4.9 for more information about placing annotation.
+Note the use of the vtkCoordinate object (obtained by invoking the GetPositionCoordinate() method) to control the position of the actor in the normalized display coordinate system. See Section 4.10 for more information about placing annotation.
 
 ### 3D Text Annotation and vtkFollower
 3D text annotation is implemented using vtkVectorText to create a polygonal representation of a text string, which is then appropriately positioned in the scene. One useful class for positioning 3D text is vtkFollower. This class is a type of actor that always faces the renderer's active camera, thereby insuring that the text is readable. The following example shows how to do this (Figure 4–7). The example creates axes and labels the origin using an instance of vtkVectorText in combination with a vtkFollower.
@@ -847,7 +985,7 @@ text_actor.SetCamera(renderer.GetActiveCamera())
 ```
 As the camera moves around the axes, the follower will orient itself to face the camera. (Try this by mousing in the rendering window to move the camera.)
 
-## 4.12 Special Plotting Classes
+## 4.13 Special Plotting Classes
 
 The Visualization Toolkit provides several composite classes that perform supplemental plotting operations. These include the ability to plot scalar bars, perform simple x-y plotting, and place flying axes for 3D spatial context.
 
@@ -872,7 +1010,7 @@ scalar_bar.SetOrientationToHorizontal()
 scalar_bar.SetWidth(0.8)
 scalar_bar.SetHeight(0.17)
 ```
-The orientation of the scalar bar is controlled by the methods SetOrientationToVertical() and SetOrientationToHorizontal(). To control the position of the scalar bar (i.e., its lower-left corner), set the position coordinate (in whatever coordinate system you desire — see Section 4.9), and then specify the width and height using normalized viewport values (or alternatively, specify the Position2 instance variable to set the upper-right corner).
+The orientation of the scalar bar is controlled by the methods SetOrientationToVertical() and SetOrientationToHorizontal(). To control the position of the scalar bar (i.e., its lower-left corner), set the position coordinate (in whatever coordinate system you desire — see Section 4.10), and then specify the width and height using normalized viewport values (or alternatively, specify the Position2 instance variable to set the upper-right corner).
 
 ### X-Y Plots
 The class vtkXYPlotActor generates x-y plots from one or more input datasets, as shown in Figure 4–10. This class is particularly useful for showing the variation of data across a sequence of points such as a line probe or a boundary edge.
@@ -1005,9 +1143,9 @@ renderer.AddActor2D(point_labels)
 renderer.AddActor2D(cell_labels)
 ```
 
-## 4.13 Transforming Data
+## 4.14 Transforming Data
 
-As we saw in Section 4.6, it is possible to position and orient vtkProp3D's in world space. However, in many applications we wish to transform the data prior to using it in the visualization pipeline. For example, to use a plane to cut (see Chapter 5) or clip an object, the plane must be positioned within the pipeline, not via the actor transformation matrix. Some objects (especially procedural source objects) can be created at a specific position and orientation in space. For example, vtkSphereSource has Center and Radius instance variables, and vtkPlaneSource has Origin, Point1, and Point2 instance variables that allow you to position the plane using three points. However, many classes do not provide this capability without moving data into a new position. In this case, you must transform the data using vtkTransformFilter or vtkTransformPolyDataFilter.
+As we saw in Section 4.7, it is possible to position and orient vtkProp3D's in world space. However, in many applications we wish to transform the data prior to using it in the visualization pipeline. For example, to use a plane to cut (see Chapter 5) or clip an object, the plane must be positioned within the pipeline, not via the actor transformation matrix. Some objects (especially procedural source objects) can be created at a specific position and orientation in space. For example, vtkSphereSource has Center and Radius instance variables, and vtkPlaneSource has Origin, Point1, and Point2 instance variables that allow you to position the plane using three points. However, many classes do not provide this capability without moving data into a new position. In this case, you must transform the data using vtkTransformFilter or vtkTransformPolyDataFilter.
 
 vtkTransformFilter is a filter that takes vtkPointSet dataset objects as input. Datasets that are subclasses of the abstract class vtkPointSet represent points explicitly, that is, an instance of vtkPoints is used to store coordinate information. vtkTransformFilter applies a transformation matrix to the points and creates a transformed points array; the rest of the dataset structure (i.e., cell topology) and attribute data (e.g., scalars, vectors, etc.) remains unchanged. vtkTransformPolyDataFilter does the same thing as vtkTransformFilter except that it is more convenient to use in a visualization pipeline containing polygonal data.
 
@@ -1015,7 +1153,7 @@ vtkTransformFilter is a filter that takes vtkPointSet dataset objects as input. 
 
 *Figure 4–13 Transforming data within the pipeline.*
 
-The following example (with results shown in Figure 4–13) uses a vtkTransformPolyDataFilter to reposition a 3D text string. (See "3D Text Annotation and vtkFollower" in Section 4.11 for more information about 3D text.)
+The following example (with results shown in Figure 4–13) uses a vtkTransformPolyDataFilter to reposition a 3D text string. (See "3D Text Annotation and vtkFollower" in Section 4.12 for more information about 3D text.)
 
 ```python
 from vtkmodules.vtkRenderingFreeType import vtkVectorText
@@ -1056,7 +1194,7 @@ Notice that vtkTransformPolyDataFilter requires that you supply it with an insta
 - PostMultiply() — control the order of multiplication of transformation matrices. If PostMultiply() is invoked, matrix operations are applied on the left hand side of the current matrix.
 - PreMultiply() — matrix multiplications are applied on the right hand side of the current transformation matrix
 
-The last two methods described above remind us that the order in which transformations are applied dramatically affects the resulting transformation matrix. (See Section 4.6.) We recommend that you spend some time experimenting with these methods and the order of application to fully understand vtkTransform.
+The last two methods described above remind us that the order in which transformations are applied dramatically affects the resulting transformation matrix. (See Section 4.7.) We recommend that you spend some time experimenting with these methods and the order of application to fully understand vtkTransform.
 
 ### Advanced Transformation
 Advanced users may wish to use VTK's extensive transformation hierarchy. The hierarchy supports a variety of linear and non-linear transformations.
@@ -1064,18 +1202,18 @@ Advanced users may wish to use VTK's extensive transformation hierarchy. The hie
 A wonderful feature of the VTK transformation hierarchy is that different types of transformation can be used in a filter to give very different results. For example, the vtkTransformPolyDataFilter accepts any transform of type vtkAbstractTransform (or a subclass). This includes transformation types ranging from the linear, affine vtkTransform (represented by a 4x4 matrix) to the non-linear, warping vtkThinPlateSplineTransform, which is a complex function representing a correlation between a set of source and target landmarks.
 
 ### 3D Widgets
-Interactor styles (see Section 4.2) are generally used to control the camera and provide simple keypress and mouse-oriented interaction techniques. Interactor styles have no representation in the scene; that is, they cannot be "seen" or interacted with, the user must know what the mouse and key bindings are in order to use them. Certain operations, however, are greatly facilitated by the ability to operate directly on objects in the scene. For example, starting a rake of streamlines along a line is easily performed if the endpoints of the line can be interactively positioned.
+Interactor styles (see Section 4.4) are generally used to control the camera and provide simple keypress and mouse-oriented interaction techniques. Interactor styles have no representation in the scene; that is, they cannot be "seen" or interacted with, the user must know what the mouse and key bindings are in order to use them. Certain operations, however, are greatly facilitated by the ability to operate directly on objects in the scene. For example, starting a rake of streamlines along a line is easily performed if the endpoints of the line can be interactively positioned.
 
 3D widgets have been designed to provide this functionality. Like the class vtkInteractorStyle, 3D widgets are subclasses of vtkInteractorObserver. That is, they watch for events invoked by vtkRenderWindowInteractor. (Recall that vtkRenderWindowInteractor translates windowing-system specific events into VTK event invocations.) Unlike vtkInteractorStyle, however, 3D widgets represent themselves in the scene in various ways. Figure 4–14 illustrates some of the many 3D widgets found in VTK.
 
 The following is a list of the most important widgets currently found in VTK and a brief description of their features. Note that some of the concepts mentioned here have not yet been covered in this text. Please refer to Chapter 13 to learn more about a particular concept and the various widgets available in VTK.
 
-- vtkScalarBarWidget — Manage a vtkScalarBar including positioning, scaling, and orienting it. (See "Scalar Bar" in Section 4.12 for more information about scalar bars.)
+- vtkScalarBarWidget — Manage a vtkScalarBar including positioning, scaling, and orienting it. (See "Scalar Bar" in Section 4.13 for more information about scalar bars.)
 - vtkPointWidget — Position a point x-y-z location in 3D space. The widget produces a polygonal output. Point widgets are typically used for probing. (See Chapter 5.)
-- vtkLineWidget — Place a straight line with a specified subdivision resolution. The widget produces a polygonal output. A common use of the line widget is to probe and plot data (see Section 4.12) or produce streamlines or stream surfaces (see Chapter 5).
+- vtkLineWidget — Place a straight line with a specified subdivision resolution. The widget produces a polygonal output. A common use of the line widget is to probe and plot data (see Section 4.13) or produce streamlines or stream surfaces (see Chapter 5).
 - vtkPlaneWidget — Orient and position a finite plane. The plane resolution is variable, and the widget produces an implicit function and a polygonal output. The plane widget is used for probing and seeding streamlines (see Chapter 5).
 - vtkImplicitPlaneWidget — Orient and position an unbounded plane. The widget produces an implicit function and a polygonal output. The polygonal output is created by clipping the plane with a bounding box. The implicit plane widget is typically used for probing, cutting, and clipping data (see Chapter 5).
-- vtkBoxWidget — Orient and position a bounding box. The widget produces an implicit function and a transformation matrix. The box widget is used to transform vtkProp3D's and subclasses (see Section 4.13) or to cut or clip data (see Chapter 5).
+- vtkBoxWidget — Orient and position a bounding box. The widget produces an implicit function and a transformation matrix. The box widget is used to transform vtkProp3D's and subclasses (see Section 4.14) or to cut or clip data (see Chapter 5).
 - vtkImagePlaneWidget — Manipulate three orthogonal planes within a 3D volumetric data set. Probing of the planes to obtain data position, pixel value, and window-level is possible. The image plane widget is used to visualize volume data (see Chapter 6).
 - vtkSphereWidget — Manipulate a sphere of variable resolution. The widget produces an implicit function and a transformation matrix and enables the control of focal point and position to support such classes as vtkCamera and vtkLight. The sphere widget can be used for controlling lights and cameras (see Sections 4.4 and 4.5), for clipping, and for cutting (see Chapter 5).
 - vtkSplineWidget — Manipulate an interpolating 3D spline. The widget produces polygonal data represented by a series of line segments of specified resolution. The widget also directly manages underlying splines for each of the x-y-z coordinate values.
@@ -1183,7 +1321,7 @@ As shown above, the implicit plane widget is instantiated and placed. The placin
 
 The 3D widgets are a powerful feature in VTK that can quickly add complex interaction to any application. We encourage you to explore the VTK examples to see the breadth and power of their capabilities.
 
-## 4.14 Antialiasing
+## 4.15 Antialiasing
 
 There are two ways to enable antialiasing with VTK: per primitive type or through multisampling. Multisampling usually gives more pleasant results.
 
@@ -1282,7 +1420,7 @@ renderWindow->Render();
 
 Going back to the previous example, just remove the line disabling multisampling and you will see the effect of multisampling on points, lines, or polygons.
 
-## 4.15 Translucent polygonal geometry
+## 4.16 Translucent polygonal geometry
 
 Rendering the geometry as translucent is a powerful tool for visualization. It allows you to "see through" the data. It can be used also to focus on a region of interest; the region of interest is rendered as opaque and the context is rendered as translucent.
 
@@ -1409,7 +1547,7 @@ int main()
 }
 ```
 
-## 4.16 Animation
+## 4.17 Animation
 
 Animation is an important component of a visualization system. It is possible to create simple animations by writing loops that continuously change some parameter on a filter and render. However such implementations can become complicated when multiple parameter changes are involved.
 
