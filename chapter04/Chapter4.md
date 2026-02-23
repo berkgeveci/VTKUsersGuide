@@ -1218,7 +1218,7 @@ The following is a list of the most important widgets currently found in VTK and
 - vtkSphereWidget — Manipulate a sphere of variable resolution. The widget produces an implicit function and a transformation matrix and enables the control of focal point and position to support such classes as vtkCamera and vtkLight. The sphere widget can be used for controlling lights and cameras (see Sections 4.4 and 4.5), for clipping, and for cutting (see Chapter 5).
 - vtkSplineWidget — Manipulate an interpolating 3D spline. The widget produces polygonal data represented by a series of line segments of specified resolution. The widget also directly manages underlying splines for each of the x-y-z coordinate values.
 
-![Figure 4-14](images/Figure_4-14.png)
+<img src="images/Figure_4-14.png" alt="Figure 4-14" width="450">
 
 *Figure 4–14 Some of the 3D widgets found in VTK.*
 

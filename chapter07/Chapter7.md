@@ -180,7 +180,7 @@ For rendering techniques that map a pixel to a single location in the volume (su
 
 The ScalarOpacity and Color transfer functions are typically used to perform a simple classification of the data. Scalar values that are part of the background, or that are considered noise, are mapped to an opacity of 0.0, eliminating them from contributing to the image. The remaining scalar values can be divided into different "materials" which have different opacities and colors. For example, data acquired from a CT scanner can often be categorized as air, soft tissue, or bone based on the density value contained in the data (Figure 7–2). The scalar values defined as air would be given an opacity of 0.0, the soft tissue scalar values might be given a light red-brown color and the bone values might be given a white color. By varying the opacity of these last two materials, you can visualize the skin surface or the bone surface, or potentially see the bone through the translucent skin. This process of determining the dividing line between materials in the data can be tedious, and in some cases not possible based on the raw input data values. For example, liver and kidney sample locations may have overlapping CT density values. In this case, a segmentation filter may need to be applied to the volume to either alter the data values so that materials can be classified solely on the basis of the scalar value, or to extract out one specific material type. These segmentation operations can be based on additional information such as location or a comparison to a reference volume.
 
-![Figure 7-3](images/Figure_7-3.png)
+<img src="images/Figure_7-3.png" alt="Figure 7-3" width="550">
 
 *Figure 7–3 CT head data classified using the ScalarOpacity, Color, and GradientOpacity transfer functions.*
 
@@ -347,7 +347,7 @@ The SetCroppingRegionFlagsToSubVolume() method is a convenience method that sets
 
 ## 7.11 Clipping a Volume
 
-![Figure 7-6](images/Figure_7-6.png)
+<img src="images/Figure_7-6.png" alt="Figure 7-6" width="450">
 
 *Figure 7–6 Clipping planes are used to define a thick slab.*
 
@@ -383,7 +383,7 @@ volume_mapper2.SetInputConnection(reader.GetOutputPort())
 
 If you set the gradient estimator to the same object in two different mappers, then it is important that these mappers have the same input. Otherwise, the gradient estimator will be out-of-date each time the mapper asks for the normals, and will regenerate them for each volume during every frame rendered. In the above example, the direction encoding objects were not explicitly created, therefore each gradient estimator created its own encoding object. Since this object does not have any significant storage requirements, this is generally an acceptable situation. Alternatively, one vtkRecursiveSphereDirectionEncoder could be created, and the SetDirectionEncoder() method would be used on each estimator.
 
-![Figure 7-7](images/Figure_7-7.png)
+<img src="images/Figure_7-7.png" alt="Figure 7-7" width="550">
 
 *Figure 7–7 Volume rendering via ray casting.*
 

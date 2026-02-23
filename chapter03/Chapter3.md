@@ -155,13 +155,13 @@ The Visualization Toolkit uses a data flow approach to transform information int
 
 Data objects represent data of various types. The class vtkDataObject can be viewed as a generic "blob" of data. Data that has a formal structure is referred to as a dataset (class vtkDataSet). Figure 3–2 shows the dataset objects supported in VTK.
 
-![Figure 3-2: Dataset types found in VTK](images/Figure_3-2.png)
+<img src="images/Figure_3-2.png" alt="Figure 3-2: Dataset types found in VTK" width="500">
 
 *Figure 3–2: Dataset types found in VTK. Note that unstructured points can be represented by either polygonal data or unstructured grids.*
 
 Datasets consist of a geometric and topological structure (points and cells) as illustrated by the figure; they also have associated attribute data such as scalars or vectors. The attribute data can be associated with the points or cells of the dataset. Cells are topological organizations of points; cells form the atoms of the dataset and are used to interpolate information between points. VTK supports over twenty cell types including vertices, lines, triangles, quadrilaterals, tetrahedra, hexahedra, and higher-order variants. Figure 3–3 shows the attribute data supported by VTK.
 
-![Figure 3-3: Data attributes](images/Figure_3-3.png)
+<img src="images/Figure_3-3.png" alt="Figure 3-3: Data attributes" width="550">
 
 *Figure 3–3: Data attributes associated with the points and cells of a dataset.*
 
@@ -171,7 +171,7 @@ Algorithms, also referred to generally as filters, operate on data objects to pr
 
 *Figure 3–4: Data objects are connected with algorithms (filters) to create the visualization pipeline.*
 
-![Figure 3-5: Algorithm types](images/Figure_3-5.png)
+<img src="images/Figure_3-5.png" alt="Figure 3-5: Algorithm types" width="650">
 
 *Figure 3–5: Different types of algorithms. Filters ingest one or more inputs and produce one or more outputs.*
 

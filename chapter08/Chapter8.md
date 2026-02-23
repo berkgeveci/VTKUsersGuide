@@ -83,7 +83,7 @@ vtkTableToGraph accepts an optional second vtkTable input so that the vertices c
 
 Therefore, to add vertex attributes, you must create a vertex table that contains columns with identifiers matching those of the edge table's columns. The vertex table may have any number of additional columns containing other vertex attributes. In our example, there may be other tables that reside in separate files or in a relational database that define athlete properties (e.g. age, gender), country properties (e.g. population, land area), and discipline properties (e.g. number of events). To add these as vertex properties in the graph, you need to construct a single table containing all these columns. For example, this can be done with a properly formed SQL query or by applying the vtkMergeTables algorithm. When this expanded table is set as the second input to vtkTableToGraph, the domains defined in the second argument of AddLinkVertex() take on a special meaning. The domain name must match the vertex table column name that contains the matching identifiers. So in our example code, the vertex table would need to have arrays named “Name”, “Country”, and “Discipline” containing values matching those in the edge table.
 
-![Figure 8-1](images/Figure_8-1.png)
+<img src="images/Figure_8-1.png" alt="Figure 8-1" width="500">
 
 *Figure 8–1 The result of performing vtkTableToGraph to visualize a table of 2008 Olympic medals. Medal-winning athletes (blue) are linked to their country (green) and discipline (red).*
 
@@ -565,7 +565,7 @@ int main(int argc, char* argv[])
 }
 ```
 
-![Figure 8-9](images/Figure_8-9.png)
+<img src="images/Figure_8-9.png" alt="Figure 8-9" width="400">
 
 *Figure 8–9 The result of computing the breadth-first distance from a starting vertex (labeled “0”)*
 
@@ -970,7 +970,7 @@ Each statistics algorithm performs its computations in a sequence of common phas
 - **Derive:** Calculate a “full” statistical model from a raw model. By “full”, we mean the complete representation of the desired model, that contains both primary and derived statistics. For example, in the case of descriptive statistics, the following derived statistics are calculated from the raw model: unbiased variance estimator, standard deviation, and two estimators (g and G) for both skewness and kurtosis. For Table 1 with a request R1={B}, these additional values are 13.76..., 3.7103, 0.520253, 0.936456, -1.4524, and -1.73616 respectively. 
 - **Assess:** Given a statistical model -- from the same or another data set -- mark each datum of a given data set. For example, in the case of descriptive statistics, each datum is marked with its relative deviation with respect to the model mean and standard deviation (this amounts to the one-dimensional Mahalanobis distance). Table 1 shows this distance for R1 = {B} in column E.
 
-![Figure 8-13](images/Figure_8-13.png)
+<img src="images/Figure_8-13.png" alt="Figure 8-13" width="450">
 
 *Figure 8–13 An example utilization of VTK's statistics algorithms with the OverView client*
 
