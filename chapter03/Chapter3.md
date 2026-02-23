@@ -18,7 +18,7 @@ In the remainder of this section, we will introduce two major components of the 
 
 ### Low-Level Object Model
 
-The VTK object model can be thought of as being rooted in the superclass vtkObject. Nearly all VTK classes are derived from this class, or in some special cases from its superclass vtkObjectBase. All VTK must be created using the object's `New()` method, and must be destroyed using the object's `Delete()` method. VTK objects cannot be allocated on the stack because the constructor is a protected method. Using a common superclass and a unified method of creating and destroying object, VTK is able to provide several basic object-oriented operations.
+The VTK object model can be thought of as being rooted in the superclass vtkObject. Nearly all VTK classes are derived from this class, or in some special cases from its superclass vtkObjectBase. All VTK objects must be created using the object's `New()` method, and must be destroyed using the object's `Delete()` method. VTK objects cannot be allocated on the stack because the constructor is a protected method. Using a common superclass and a unified method of creating and destroying object, VTK is able to provide several basic object-oriented operations.
 
 **Reference Counting**. Objects explicitly store a count of the number of pointers referencing them.
 
@@ -74,7 +74,7 @@ if(obj->IsA("vtkExampleClass")) { ... }
 A pointer of a superclass type may be safely converted to a more derived type using the static SafeDownCast() method provided by the class of the derived type:
 
 ```cpp
-vtkExampleClass* example = vtkExampleClass::SafeDownCast(obj)
+vtkExampleClass* example = vtkExampleClass::SafeDownCast(obj);
 ```
 
 This will succeed at run-time only if the object is truly an instance of the more-derived type and otherwise will return a null pointer.
@@ -93,17 +93,13 @@ The VTK rendering engine consists of the classes in VTK that are responsible for
 
 The most commonly used subclasses of vtkProp for displaying objects in 3D are vtkActor (used to represent geometric data in the scene) and vtkVolume (used to represent volumetric data in the scene).
 
-There are also props that represent data in 2D such as vtkActor2D. The vtkProp subclass is generally responsible for knowing its position, size, and orientation in the scene. The parameters used to control the placement of the prop generally depend on whether the prop is for example a 3D object in the scene, or a 2D annotation. 
-
-![Figure 3-2: Dataset types found in VTK](images/Figure_3-2.png)
-
-*Figure 3–2: Dataset types found in VTK. Note that unstructured points can be represented by either polygonal data or unstructured grids.*
+There are also props that represent data in 2D such as vtkActor2D. The vtkProp subclass is generally responsible for knowing its position, size, and orientation in the scene. The parameters used to control the placement of the prop generally depend on whether the prop is for example a 3D object in the scene, or a 2D annotation.
 
 For 3D props such as vtkActor and vtkVolume (both subclasses of vtkProp3D which is itself a subclass of vtkProp), you can either directly control parameters such as the object's 3D position, orientation and scale, or you can use a 4x4 transformation matrix. For 2D props that provide annotation such as the vtkScalarBarActor, the size and position of the annotation can be defined in a variety of ways including specifying a position, width, and height relative to the size of the entire viewport. In addition to providing placement control, props generally have a mapper object that holds the data and knows how to render it, and a property object that controls parameters such as color and opacity.
 
-There are a large number (over 50) of specialized props such as vtkImageActor (used to display an image) and vtkPieChartActor (used to create a pie chart visual representation of an array of data values). Some of these specialized props directly contain the parameters that control appearance, and directly have a reference to the input data to be rendered, and therefore do not require the use of a property or a mapper. The vtkFollower prop is a specialized subclass of vtkActor that will automatically update its orientation in order to continually face a specified camera. This is useful for displaying billboards or text in the 3D scene and having them remain visible as the user rotates. The vtkLODActor is also a subclass of vtkActor that automatically changes its geometric representation in order to maintain interactive frame rates, and vtkLODProp3D is a subclass of vtkProp3D that selects between a number of different mappers (perhaps even a mixture of volumetric and geometric mappers) in order to provide interactivity. vtkAssembly allows hierarchies of actors, properly managing the transformations when the hierarchy is translated, rotated or scaled.
+There are a large number (over 50) of specialized props such as vtkImageSlice (used to display an image) and vtkPieChartActor (used to create a pie chart visual representation of an array of data values). Some of these specialized props directly contain the parameters that control appearance, and directly have a reference to the input data to be rendered, and therefore do not require the use of a property or a mapper. The vtkFollower prop is a specialized subclass of vtkActor that will automatically update its orientation in order to continually face a specified camera. This is useful for displaying billboards or text in the 3D scene and having them remain visible as the user rotates. The vtkLODActor is also a subclass of vtkActor that automatically changes its geometric representation in order to maintain interactive frame rates, and vtkLODProp3D is a subclass of vtkProp3D that selects between a number of different mappers (perhaps even a mixture of volumetric and geometric mappers) in order to provide interactivity. vtkAssembly allows hierarchies of actors, properly managing the transformations when the hierarchy is translated, rotated or scaled.
 
-**vtkAbstractMapper.** Some props such as vtkActor and vtkVolume use a subclass of vtkAbstractMapper to hold a reference to the input data and to provide the actual rendering functionality. The vtkPolyDataMapper is the primary mapper for rendering polygonal geometry. For volumetric objects, VTK provides several rendering techniques including the vtkFixedPointVolumeRayCastMapper that can be used to rendering vtkImageData, and the vtkProjectedTetrahedra mapper that can be used to render vtkUnstructuredGrid data.
+**vtkAbstractMapper.** Some props such as vtkActor and vtkVolume use a subclass of vtkAbstractMapper to hold a reference to the input data and to provide the actual rendering functionality. The vtkPolyDataMapper is the primary mapper for rendering polygonal geometry. For volumetric objects, the recommended mapper is vtkSmartVolumeMapper, which automatically selects the best available rendering technique at runtime (typically GPU-accelerated ray casting via vtkGPUVolumeRayCastMapper). vtkSmartVolumeMapper can render vtkImageData, while vtkProjectedTetrahedraMapper can be used to render vtkUnstructuredGrid data.
 
 **vtkProperty and vtkVolumeProperty.** Some props use a separate property object to hold the various parameters that control the appearance of the data. This allows you to more easily share appearance settings between different objects in your scene. The vtkActor object uses a vtkProperty to store parameters such as color, opacity, and the ambient, diffuse, and specular coefficient of the material. The vtkVolume object instead uses a vtkVolumeProperty to capture the parameters that are applicable to a volumetric object, such as the transfer functions that map the scalar value to color and opacity. Many mappers also provide functionality to set clipping planes that can be used to reveal interior structure.
 
@@ -155,7 +151,13 @@ The Visualization Toolkit uses a data flow approach to transform information int
 * vtkDataObject 
 * vtkAlgorithm
 
-Data objects represent data of various types. The class vtkDataObject can be viewed as a generic “blob” of data. Data that has a formal structure is referred to as a dataset (class vtkDataSet). Figure 3–2 shows the dataset objects supported in VTK. Datasets consist of a geometric and topological structure (points and cells) as illustrated by the figure; they also have associated attribute data such as scalars or vectors. The attribute data can be associated with the points or cells of the dataset. Cells are topological organizations of points; cells form the atoms of the dataset and are used to interpolate information between points. Figure 19–20 and Figure 19–21 show twenty-three of the most common cell types supported by VTK. Figure 3–3 shows the attribute data supported by VTK.
+Data objects represent data of various types. The class vtkDataObject can be viewed as a generic "blob" of data. Data that has a formal structure is referred to as a dataset (class vtkDataSet). Figure 3–2 shows the dataset objects supported in VTK.
+
+![Figure 3-2: Dataset types found in VTK](images/Figure_3-2.png)
+
+*Figure 3–2: Dataset types found in VTK. Note that unstructured points can be represented by either polygonal data or unstructured grids.*
+
+Datasets consist of a geometric and topological structure (points and cells) as illustrated by the figure; they also have associated attribute data such as scalars or vectors. The attribute data can be associated with the points or cells of the dataset. Cells are topological organizations of points; cells form the atoms of the dataset and are used to interpolate information between points. VTK supports over twenty cell types including vertices, lines, triangles, quadrilaterals, tetrahedra, hexahedra, and higher-order variants. Figure 3–3 shows the attribute data supported by VTK.
 
 ![Figure 3-3: Data attributes](images/Figure_3-3.png)
 
@@ -179,7 +181,7 @@ There are several important issues regarding the construction of the visualizati
 aFilter->SetInputConnection( anotherFilter->GetOutputPort() );
 ```
 
-which sets the input to the filter aFilter to the output of the filter anotherFilter. (Filters with multiple inputs and outputs have similar methods.) Second, we must have a mechanism for controlling the execution of the pipeline. We only want to execute those portions of the pipeline necessary to bring the output up to date. The Visualization Toolkit uses a lazy evaluation scheme (executes only the data is requested) based on an internal modification time of each object. Third, the assembly of the pipeline requires that only those objects compatible with one another can fit together with the `SetInputConnection()` and `GetOutputPort()` methods. VTK produces errors at run-time if the data object types are incompatible. Finally, we must decide whether to cache, or retain, the data objects once the pipeline has executed. Since visualization datasets are typically quite large, this is important to the successful application of visualization tools. VTK offers methods to turn data caching on and off, use of reference counting to avoid copying data, and methods to stream data in pieces if an entire dataset cannot be held in memory. (We recommend that you review the chapter on the Visualization Pipeline in The Visualization Toolkit An Object-Oriented Approach to 3D Graphics text for more information.) Please note that there are many varieties of both algorithm and data objects. Figure 16–2 shows six of the most common data object types supported by the current version of VTK. Algorithm objects vary in their type(s) of input data and output data and of course in the particular algorithm implemented.
+which sets the input to the filter aFilter to the output of the filter anotherFilter. (Filters with multiple inputs and outputs have similar methods.) Second, we must have a mechanism for controlling the execution of the pipeline. We only want to execute those portions of the pipeline necessary to bring the output up to date. The Visualization Toolkit uses a lazy evaluation scheme (executes only the data is requested) based on an internal modification time of each object. Third, the assembly of the pipeline requires that only those objects compatible with one another can fit together with the `SetInputConnection()` and `GetOutputPort()` methods. VTK produces errors at run-time if the data object types are incompatible. Finally, we must decide whether to cache, or retain, the data objects once the pipeline has executed. Since visualization datasets are typically quite large, this is important to the successful application of visualization tools. VTK offers methods to turn data caching on and off, use of reference counting to avoid copying data, and methods to stream data in pieces if an entire dataset cannot be held in memory. (We recommend that you review the chapter on the Visualization Pipeline in *The Visualization Toolkit An Object-Oriented Approach to 3D Graphics* text for more information.) Please note that there are many varieties of both algorithm and data objects. Figure 3–2 shows the most common data object types supported by VTK. Algorithm objects vary in their type(s) of input data and output data and of course in the particular algorithm implemented.
 
 **Pipeline Execution.** In the previous section we discussed the need to control the execution of the visualization pipeline. In this section we will expand our understanding of some key concepts regarding pipeline execution.
 
@@ -190,17 +192,17 @@ from vtkmodules.vtkIOParallel import vtkMultiBlockPLOT3DReader
 
 reader = vtkMultiBlockPLOT3DReader()
 reader.SetXYZFileName("Data/combxyz.bin")
-reader.GetOutput().GetNumberOfPoints()
+reader.GetOutput().GetBlock(0)  # returns None
 ```
 
-the reader object will return "0" from the `GetNumberOfPoints()` method call, despite the fact that the data file contains thousands of points. However, if you call the `Update()` method first:
+the reader object will return `None` because the pipeline has not yet executed and the output contains no data, despite the fact that the data file contains thousands of points. However, if you call the `Update()` method first:
 
 ```python
 reader.Update()
-reader.GetOutput().GetBlock(0).GetNumberOfPoints()
+reader.GetOutput().GetBlock(0).GetNumberOfPoints()  # returns 7194
 ```
 
-the reader object will return the correct number. In the first example, the `GetNumberOfPoints()` method does not require computation, and the object simply returns the current number of points, which is "0". In the second example, the `Update()` method forces execution of the pipeline, thereby forcing the reader to execute and read the data from the file indicated. Once the reader has executed, the number of points in its output is set correctly.
+the reader object will return the correct number. In the first example, no computation has been requested, so the output is empty. In the second example, the `Update()` method forces execution of the pipeline, thereby forcing the reader to read the data from the file. Once the reader has executed, its output is populated with the data from the file.
 
 Normally, you do not need to manually invoke Update() because the filters are connected into a visualization pipeline. In this case, when the actor receives a request to render itself, it forwards the method to its mapper, and the Update() method is automatically sent through the visualization pipeline. A high-level view of pipeline execution appears in Figure 3–6.
 
@@ -208,13 +210,13 @@ Normally, you do not need to manually invoke Update() because the filters are co
 
 *Figure 3–6: Conceptual overview of pipeline execution.*
 
-As this figure illustrates, the `Render()` method often initiates the request for data; this request is then passed up through the pipeline. Depending on which portions of the pipeline are out-of-date, the filters in the pipeline may reexecute, thereby bringing the data at the end of the pipeline up-to-date; the up-to-date data is then rendered by the actor. (For more information about the execution process, see Chapter 15 "Managing Pipeline Execution".) 
+As this figure illustrates, the `Render()` method often initiates the request for data; this request is then passed up through the pipeline. Depending on which portions of the pipeline are out-of-date, the filters in the pipeline may reexecute, thereby bringing the data at the end of the pipeline up-to-date; the up-to-date data is then rendered by the actor.
 
-**Image Processing.** VTK supports an extensive set of image processing and volume rendering functionality. In VTK, both 2D (image) and 3D (volume) data are referred to as vtkImageData. An image dataset in VTK is one in which the data is arranged in a regular, axis-aligned array. Images, pixmaps, and bitmaps are examples of 2D image datasets; volumes (a stack of 2D images) is a 3D image dataset.
+**Image Processing.** VTK supports an extensive set of image processing and volume rendering functionality. In VTK, both 2D (image) and 3D (volume) data are referred to as vtkImageData. An image dataset in VTK is one in which the data is arranged in a regular, axis-aligned array. Images, pixmaps, and bitmaps are examples of 2D image datasets; volumes (a stack of 2D images) are 3D image datasets.
 
 Algorithms in the imaging pipeline always input and output image data objects. Because of the regular and simple nature of the data, the imaging pipeline has other important features. Volume rendering is used to visualize 3D vtkImageData (see Chapter 7 "Volume Rendering"), and special image viewers are used to view 2D vtkImageData. Almost all algorithms in the imaging pipeline are multithreaded and are capable of streaming data in pieces to satisfy a user-specified memory limit. Filters automatically sense the number of cores and processors available on the system and create that number of threads during execution as well as automatically separating data into pieces that are streamed through the pipeline.
 
-This concludes our brief overview of the Visualization Toolkit system architecture. We recommend the The Visualization Toolkit An Object-Oriented Approach to 3D Graphics text for more details on many of the algorithms found in VTK. Learning by example is another helpful approach. Chapters 4 through 13 contain many annotated examples demonstrating various capabilities of VTK. Also, since source code is available, you may wish to study the examples found in the VTK/Examples directory of the VTK source tree.
+This concludes our brief overview of the Visualization Toolkit system architecture. We recommend *The Visualization Toolkit An Object-Oriented Approach to 3D Graphics* text for more details on many of the algorithms found in VTK. Learning by example is another helpful approach. Chapters 4 through 13 contain many annotated examples demonstrating various capabilities of VTK. Also, since source code is available, you may wish to study the examples found in the VTK/Examples directory of the VTK source tree.
 
 With this abbreviated introduction behind us, let's look at ways to create applications in C++, Java, and Python.
 
@@ -236,7 +238,7 @@ foo = vtkElevationFilter()
 foo.AddObserver("StartEvent", print_status)
 ```
 
-This type of functionality (i.e., callback) is available in all the languages VTK supports. Each section that follows will show a brief example of how to use it. Further discussion on user methods is provided in the chapter "Integrating With The Windowing System". (This chapter also discusses user interface integration issues.) To create your own application, we suggest starting with one of the examples that come with VTK. They can be found in VTK/Examples in the source distribution.
+This type of functionality (i.e., callback) is available in all the languages VTK supports. Each section that follows will show a brief example of how to use it. To create your own application, we suggest starting with one of the examples that come with VTK or the many examples available at https://examples.vtk.org.
 
 ### C++
 
@@ -383,3 +385,164 @@ anActor.GetProperty().SetColor(red, green, blue)
 ```
 
 One major limitation you'll find is that some C++ applications cannot be converted to the other languages because of pointer manipulation. While it is always possible to get and set individual values from the wrapped languages, it is not always possible to obtain a raw pointer to quickly traverse and inspect or modify a large structure. If your application requires this level of data inspection or manipulation, you can either develop directly in C++ or extend VTK at the C++ level with your required high-performance classes, then use these new classes from your preferred interpreted language.
+
+## 3.4 Building Desktop Applications with Qt
+
+Qt is the standard toolkit for building polished desktop VTK applications with menus, toolbars, dockable panels, and multiple views. VTK provides dedicated Qt widgets that embed a VTK render window inside any Qt layout. Both C++ and Python (via PySide6) workflows are supported.
+
+### C++ Qt + VTK
+
+#### CMake Configuration
+
+A Qt+VTK application requires the `GUISupportQt` VTK component and Qt's `Core` and `Widgets` modules. The `CMAKE_AUTOMOC` flag tells CMake to run Qt's meta-object compiler automatically, and `vtk_module_autoinit` ensures the correct VTK rendering backend is loaded:
+
+```cmake
+cmake_minimum_required(VERSION 3.12)
+project(MyQtVTKApp)
+
+find_package(VTK COMPONENTS CommonCore GUISupportQt)
+find_package("Qt${VTK_QT_VERSION}" COMPONENTS Core Widgets)
+
+set(CMAKE_AUTOMOC ON)
+
+add_executable(MyQtVTKApp MyQtVTKApp.cxx)
+target_link_libraries(MyQtVTKApp
+  PRIVATE
+    ${VTK_LIBRARIES}
+    "Qt${VTK_QT_VERSION}::Core"
+    "Qt${VTK_QT_VERSION}::Widgets")
+vtk_module_autoinit(
+  TARGETS MyQtVTKApp
+  MODULES ${VTK_LIBRARIES})
+```
+
+The variable `VTK_QT_VERSION` is set by VTK's CMake configuration to match the Qt major version (5 or 6) that VTK was built against, so the same CMakeLists.txt works with either Qt version.
+
+#### Minimal C++ Example
+
+The following example creates a Qt main window with a VTK render widget as its central widget and renders a cone (see `examples/QtConeCxx/`):
+
+```cpp
+#include <QApplication>
+#include <QMainWindow>
+#include <QSurfaceFormat>
+#include <QVTKOpenGLNativeWidget.h>
+#include <vtkActor.h>
+#include <vtkConeSource.h>
+#include <vtkGenericOpenGLRenderWindow.h>
+#include <vtkNew.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkRenderer.h>
+
+int main(int argc, char* argv[])
+{
+  // Set the default surface format BEFORE constructing QApplication.
+  QSurfaceFormat::setDefaultFormat(QVTKOpenGLNativeWidget::defaultFormat());
+  QApplication app(argc, argv);
+
+  // Create a QMainWindow with a VTK render widget.
+  QMainWindow window;
+  window.resize(800, 600);
+
+  QVTKOpenGLNativeWidget* vtkWidget = new QVTKOpenGLNativeWidget();
+  window.setCentralWidget(vtkWidget);
+
+  // Prevent the macOS trackpad from generating spurious button-press
+  // events via touch input.  Normal mouse/trackpad clicks still work.
+  vtkWidget->setAttribute(Qt::WA_AcceptTouchEvents, false);
+
+  // Create a vtkGenericOpenGLRenderWindow and assign it to the widget.
+  vtkNew<vtkGenericOpenGLRenderWindow> renderWindow;
+  vtkWidget->setRenderWindow(renderWindow);
+
+  // Build a VTK pipeline.
+  vtkNew<vtkConeSource> cone;
+  cone->SetHeight(3.0);
+  cone->SetRadius(1.0);
+  cone->SetResolution(30);
+
+  vtkNew<vtkPolyDataMapper> mapper;
+  mapper->SetInputConnection(cone->GetOutputPort());
+  vtkNew<vtkActor> actor;
+  actor->SetMapper(mapper);
+
+  vtkNew<vtkRenderer> renderer;
+  renderer->AddActor(actor);
+  renderer->SetBackground(0.1, 0.2, 0.4);
+  renderWindow->AddRenderer(renderer);
+
+  window.show();
+
+  // Qt's event loop replaces vtkRenderWindowInteractor::Start().
+  return app.exec();
+}
+```
+
+> **Important:** The call to `QSurfaceFormat::setDefaultFormat()` must come *before* the `QApplication` constructor. Setting it later can cause OpenGL context creation failures.
+>
+> **macOS note:** On macOS, the trackpad can generate spurious button-press events through touch input. Call `setAttribute(Qt::WA_AcceptTouchEvents, false)` on the VTK widget to prevent this.
+
+#### Key Classes
+
+- **`QVTKOpenGLNativeWidget`** -- A `QOpenGLWidget` subclass that hosts a VTK render window inside any Qt layout. This is the primary widget for embedding VTK views in Qt applications.
+- **`vtkGenericOpenGLRenderWindow`** -- A render window designed to work with an externally managed OpenGL context. Qt creates and owns the OpenGL context, and this class lets VTK render into it. Must be used with `QVTKOpenGLNativeWidget`.
+- **`vtkEventQtSlotConnect`** -- Bridges VTK's observer/command event system to Qt's signal/slot mechanism. Allows a Qt slot to be called in response to any VTK event (e.g., `ProgressEvent`, `PickEvent`).
+
+### Python (PySide6) + VTK
+
+VTK's Python package includes a Qt widget module that works with PySide6 out of the box -- no source build required.
+
+#### Installation
+
+```bash
+pip install vtk PySide6
+```
+
+VTK detects PySide6 automatically at runtime.
+
+#### Minimal Python Example
+
+The following example embeds a VTK cone in a Qt window (see `examples/QtCone.py`):
+
+```python
+import sys
+
+# Use QOpenGLWidget as the base class -- must be set before importing
+# QVTKRenderWindowInteractor.
+import vtkmodules.qt
+vtkmodules.qt.QVTKRWIBase = "QOpenGLWidget"
+
+from PySide6.QtWidgets import QApplication, QMainWindow
+from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from vtkmodules.vtkFiltersSources import vtkConeSource
+from vtkmodules.vtkRenderingCore import vtkActor, vtkPolyDataMapper, vtkRenderer
+import vtkmodules.vtkRenderingOpenGL2  # noqa: F401 (load OpenGL2 backend)
+import vtkmodules.vtkInteractionStyle  # noqa: F401 (load interactor styles)
+
+app = QApplication(sys.argv)
+window = QMainWindow()
+
+# Create the VTK widget and place it in the main window.
+vtk_widget = QVTKRenderWindowInteractor(window)
+window.setCentralWidget(vtk_widget)
+
+# Build a VTK pipeline.
+cone = vtkConeSource()
+mapper = vtkPolyDataMapper()
+mapper.SetInputConnection(cone.GetOutputPort())
+actor = vtkActor()
+actor.SetMapper(mapper)
+
+renderer = vtkRenderer()
+renderer.AddActor(actor)
+renderer.SetBackground(0.1, 0.2, 0.4)
+vtk_widget.GetRenderWindow().AddRenderer(renderer)
+
+window.show()
+vtk_widget.Initialize()
+vtk_widget.Start()
+
+sys.exit(app.exec())
+```
+
+The `QVTKRenderWindowInteractor` widget manages its own `vtkRenderWindow` and `vtkRenderWindowInteractor` internally. Setting `QVTKRWIBase` to `"QOpenGLWidget"` *before* importing the widget selects the `QOpenGLWidget`-backed implementation, which provides reliable rendering on all platforms. After calling `Initialize()` and `Start()` on the widget, hand control to Qt's event loop with `app.exec()`.
