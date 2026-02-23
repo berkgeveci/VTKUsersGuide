@@ -581,3 +581,122 @@ while (!it.IsAtEnd())
     it.NextSpan();
 }
 ```
+
+### Edge Detection
+
+Edge detection highlights regions of rapid intensity change in an image. VTK provides several filters for this purpose, all operating on `vtkImageData`.
+
+**vtkImageGradientMagnitude** computes the magnitude of the image gradient at each pixel — large values indicate edges. It works on 2D or 3D images and supports boundary handling. This is the most general-purpose edge detector.
+
+```python
+from vtkmodules.vtkImagingGeneral import vtkImageGradientMagnitude
+
+grad_mag = vtkImageGradientMagnitude()
+grad_mag.SetInputConnection(image_source.GetOutputPort())
+grad_mag.SetDimensionality(2)
+grad_mag.HandleBoundariesOn()
+```
+
+**vtkImageSobel2D** applies the Sobel operator, which computes directional gradients using a 3x3 convolution kernel. The output has two components (X and Y gradient), so you may want to compute the magnitude separately or use `vtkImageGradientMagnitude` for a single-component result.
+
+```python
+from vtkmodules.vtkImagingGeneral import vtkImageSobel2D
+
+sobel = vtkImageSobel2D()
+sobel.SetInputConnection(image_source.GetOutputPort())
+```
+
+**vtkImageLaplacian** computes the discrete Laplacian (second-order derivative), which detects edges as zero crossings. It is more sensitive to noise than gradient-based methods but responds to edges in all directions equally.
+
+```python
+from vtkmodules.vtkImagingGeneral import vtkImageLaplacian
+
+laplacian = vtkImageLaplacian()
+laplacian.SetInputConnection(image_source.GetOutputPort())
+laplacian.SetDimensionality(2)
+```
+
+See `examples/edge_detection.py` for a complete example comparing these filters.
+
+> **See also:** [ImageGradient](https://examples.vtk.org/site/Python/Images/ImageGradient/) on the VTK Examples site.
+
+### Median Filtering
+
+Median filtering is a nonlinear smoothing technique that replaces each pixel with the median value in its neighborhood. It is especially effective at removing salt-and-pepper noise while preserving edges — unlike Gaussian smoothing, which blurs edges.
+
+**vtkImageMedian3D** applies a median filter with a configurable kernel size. For 2D images, set the Z dimension of the kernel to 1.
+
+```python
+from vtkmodules.vtkImagingGeneral import vtkImageMedian3D
+
+median = vtkImageMedian3D()
+median.SetInputConnection(noisy_image.GetOutputPort())
+median.SetKernelSize(3, 3, 1)  # 3x3 neighborhood for 2D images
+```
+
+**vtkImageHybridMedian2D** implements the hybrid median filter, which applies median filtering in horizontal/vertical and diagonal directions separately, then takes the median of those results. This preserves corners and thin features better than the standard median.
+
+```python
+from vtkmodules.vtkImagingGeneral import vtkImageHybridMedian2D
+
+hybrid = vtkImageHybridMedian2D()
+hybrid.SetInputConnection(noisy_image.GetOutputPort())
+```
+
+See `examples/median_filter.py` for a complete example.
+
+### Convolution
+
+`vtkImageConvolve` applies a general convolution kernel to an image. You supply a 3x3, 5x5, or 7x7 kernel as a flat list of values. This is useful for implementing custom sharpening, blurring, embossing, or other linear filters.
+
+```python
+from vtkmodules.vtkImagingGeneral import vtkImageConvolve
+
+convolve = vtkImageConvolve()
+convolve.SetInputConnection(image_source.GetOutputPort())
+
+# 3x3 sharpening kernel
+convolve.SetKernel3x3([
+     0, -1,  0,
+    -1,  5, -1,
+     0, -1,  0,
+])
+```
+
+Other common kernels include:
+
+| Kernel | Values (3x3) | Effect |
+|--------|-------------|--------|
+| Box blur | All 1/9 | Uniform smoothing |
+| Sharpen | Center 5, cross -1 | Edge enhancement |
+| Emboss | [-2,-1,0, -1,1,1, 0,1,2] | Relief effect |
+
+For 5x5 kernels use `SetKernel5x5()`, and for 7x7 use `SetKernel7x7()`. See `examples/image_convolve.py` for a complete example.
+
+### Anisotropic Diffusion
+
+Anisotropic diffusion smooths an image while preserving edges. Unlike Gaussian smoothing (which blurs everything uniformly), anisotropic diffusion reduces the diffusion rate near edges, keeping them sharp while smoothing flat regions. This makes it useful for denoising images where edge preservation is important.
+
+VTK provides `vtkImageAnisotropicDiffusion2D` for 2D images and `vtkImageAnisotropicDiffusion3D` for volumes. The key parameters are:
+
+- **NumberOfIterations** — More iterations produce stronger smoothing.
+- **DiffusionThreshold** — Gradient magnitude above which diffusion is reduced. Lower values preserve more edges; higher values smooth more aggressively.
+- **DiffusionFactor** — Controls the diffusion rate per iteration (typically 1.0).
+
+```python
+from vtkmodules.vtkImagingGeneral import vtkImageAnisotropicDiffusion2D
+
+diffusion = vtkImageAnisotropicDiffusion2D()
+diffusion.SetInputConnection(noisy_image.GetOutputPort())
+diffusion.SetNumberOfIterations(10)
+diffusion.SetDiffusionThreshold(20.0)
+diffusion.SetDiffusionFactor(1.0)
+```
+
+For 3D volumes, use `vtkImageAnisotropicDiffusion3D` with the same interface. See `examples/anisotropic_diffusion.py` for a complete example.
+
+![Figure 6-18](images/Figure_6-18.png)
+
+*Figure 6–18 Image processing filters. From left: edge detection (`vtkImageGradientMagnitude`), median filtering of a noisy image, convolution with a sharpening kernel, and anisotropic diffusion for edge-preserving smoothing.*
+
+> **See also:** [MedianComparison](https://examples.vtk.org/site/Python/Images/MedianComparison/) and [HybridMedianComparison](https://examples.vtk.org/site/Python/Images/HybridMedianComparison/) on the VTK Examples site.
