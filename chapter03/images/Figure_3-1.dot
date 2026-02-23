@@ -1,0 +1,49 @@
+digraph vtk_architecture {
+    graph [
+        rankdir=TB
+        bgcolor=white
+        fontname="Helvetica"
+        margin=0.3
+    ];
+    node [
+        fontname="Helvetica"
+        shape=none
+    ];
+
+    subgraph cluster_outer {
+        label=""
+        style="filled"
+        fillcolor="white"
+        color="black"
+        penwidth=2
+
+        wrapper_label [
+            label=<
+                <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+                    <TR><TD><FONT POINT-SIZE="18">Language Bindings</FONT></TD></TR>
+                    <TR><TD><FONT POINT-SIZE="14">(Python, Java, .NET, JavaScript)</FONT></TD></TR>
+                </TABLE>
+            >
+        ]
+
+        subgraph cluster_inner {
+            label=""
+            style="filled"
+            fillcolor="lightgray"
+            color="black"
+            penwidth=2
+            margin=30
+
+            core_label [
+                label=<
+                    <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+                        <TR><TD><FONT POINT-SIZE="18">Compiled Core</FONT></TD></TR>
+                        <TR><TD><FONT POINT-SIZE="14">(C++)</FONT></TD></TR>
+                    </TABLE>
+                >
+            ]
+        }
+
+        wrapper_label -> core_label [style=invis]
+    }
+}

@@ -8,7 +8,7 @@ The Visualization Toolkit consists of two basic subsystems: a compiled C++ class
 
 ![Figure 3-1: The Visualization Toolkit architecture](images/Figure_3-1.png)
 
-*Figure 3–1: The Visualization Toolkit consists of a compiled (C++) core wrapped with various interpreted languages (Java, Python).*
+*Figure 3–1: The Visualization Toolkit consists of a compiled (C++) core with language bindings for Python, Java, .NET, and JavaScript.*
 
 The advantage of this architecture is that you can build efficient (in both CPU and memory usage) algorithms in the compiled C++ language, and retain the rapid code development features of interpreted languages (avoidance of compile/link cycle, simple but powerful tools, and access to GUI tools). Of course, for those proficient in C++ and who have the tools to do so, applications can be built entirely in C++.
 
