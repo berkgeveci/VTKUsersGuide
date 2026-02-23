@@ -26,10 +26,10 @@ VTKUsersGuide/
 │   ├── images/                 # 7 high-resolution figures (300 DPI)
 │   └── README.md
 ├── chapter04/                  # Chapter 4: The Basics
-│   ├── ch4.md
+│   ├── Chapter4.md
 │   └── images/                 # 16 figures
 ├── chapter05/                  # Chapter 5: Visualization Techniques
-│   ├── ch5.md
+│   ├── Chapter5.md
 │   └── images/                 # 14 figures
 ├── chapter06/                  # Chapter 6: Image Processing & Visualization
 │   ├── Chapter6.md
@@ -98,8 +98,8 @@ Example for MkDocs:
 nav:
   - Home: index.md
   - System Overview: chapter03/Chapter3.md
-  - The Basics: chapter04/ch4.md
-  - Visualization Techniques: chapter05/ch5.md
+  - The Basics: chapter04/Chapter4.md
+  - Visualization Techniques: chapter05/Chapter5.md
   # ... etc
 ```
 

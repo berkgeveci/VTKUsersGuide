@@ -46,7 +46,7 @@ Introduction to VTK's architecture and object model. Covers the compiled C++ cor
 
 ---
 
-### [Chapter 4: The Basics](chapter04/ch4.md)
+### [Chapter 4: The Basics](chapter04/Chapter4.md)
 
 Hands-on introduction to VTK through practical examples. Demonstrates creating simple models, reading data, applying filters, rendering, and basic interaction.
 
@@ -62,7 +62,7 @@ Hands-on introduction to VTK through practical examples. Demonstrates creating s
 
 ---
 
-### [Chapter 5: Visualization Techniques](chapter05/ch5.md)
+### [Chapter 5: Visualization Techniques](chapter05/Chapter5.md)
 
 Comprehensive coverage of visualization algorithms organized by data type. Explores techniques for working with vtkDataSet and its subclasses, focusing on practical filter combinations and pipeline patterns.
 

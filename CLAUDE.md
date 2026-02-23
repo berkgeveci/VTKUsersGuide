@@ -18,9 +18,7 @@ The repository is organized by chapters:
 ## Document Organization
 
 ### Chapter Naming
-Chapters use slightly inconsistent naming:
-- Most chapters: `Chapter[N].md` (e.g., `Chapter3.md`, `Chapter6.md`)
-- Some chapters: `ch[N].md` (e.g., `ch4.md`, `ch5.md`)
+All chapters use consistent naming: `Chapter[N].md` (e.g., `Chapter3.md`, `Chapter4.md`, `Chapter5.md`)
 
 ### Content Structure
 All chapters follow this Markdown hierarchy:
