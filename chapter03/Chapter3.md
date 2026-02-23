@@ -359,33 +359,7 @@ def myCallback(obj, event):
 ren1.AddObserver("StartEvent", myCallback)
 ```
 
-## 3.3 Conversion Between Languages
-
-As we have seen, VTK's core is implemented in C++ and then wrapped with the Java and Python programming languages. This means that you have a language choice when developing applications. Your choice will depend on which language you are most comfortable with, the nature of the application, and whether you need access to internal data structures and/or have special performance requirements. C++ offers several advantages over the other languages when you need to access internal data structure or require the highest-performing application possible. However, using C++ means the extra burden of the compile/link cycle, which often slows the software development process.
-
-You may find yourself developing prototypes in an interpreted language such as Python and then converting them to C++. Or, you may discover example code (in the VTK distribution or from other users) that you wish to convert to your implementation language.
-
-Converting VTK code from one language to another is fairly straightforward. Class names and method names remain the same across languages; what changes are the implementation details and GUI interface, if any. For example, the C++ statement
-
-```cpp
-anActor->GetProperty()->SetColor(red, green, blue);
-```
-
-in Java becomes
-
-```java
-anActor.GetProperty().SetColor(red, green, blue);
-```
-
-and in Python becomes
-
-```python
-anActor.GetProperty().SetColor(red, green, blue)
-```
-
-One major limitation you'll find is that some C++ applications cannot be converted to the other languages because of pointer manipulation. While it is always possible to get and set individual values from the wrapped languages, it is not always possible to obtain a raw pointer to quickly traverse and inspect or modify a large structure. If your application requires this level of data inspection or manipulation, you can either develop directly in C++ or extend VTK at the C++ level with your required high-performance classes, then use these new classes from your preferred interpreted language.
-
-## 3.4 Building Desktop Applications with Qt
+## 3.3 Building Desktop Applications with Qt
 
 Qt is the standard toolkit for building polished desktop VTK applications with menus, toolbars, dockable panels, and multiple views. VTK provides dedicated Qt widgets that embed a VTK render window inside any Qt layout. Both C++ and Python (via PySide6) workflows are supported.
 
@@ -546,7 +520,7 @@ sys.exit(app.exec())
 
 The `QVTKRenderWindowInteractor` widget manages its own `vtkRenderWindow` and `vtkRenderWindowInteractor` internally. Setting `QVTKRWIBase` to `"QOpenGLWidget"` *before* importing the widget selects the `QOpenGLWidget`-backed implementation, which provides reliable rendering on all platforms. After calling `Initialize()` and `Start()` on the widget, hand control to Qt's event loop with `app.exec()`.
 
-## 3.5 Web Applications with Trame
+## 3.4 Web Applications with Trame
 
 Trame is a Python web framework developed by Kitware that lets you build interactive VTK visualization applications served in the browser. The entire application is written in Python — no JavaScript is required. Trame supports both local rendering (client-side via vtk.js, where geometry is serialized and sent to the browser) and remote rendering (server-side, where VTK renders on the server and streams images to the client).
 
@@ -641,7 +615,7 @@ Trame automatically opens a browser tab showing the cone. You can rotate, zoom, 
 
 For many applications, `VtkLocalView` is the right default. Switch to `VtkRemoteView` when the dataset is too large for the browser or when you need rendering features only available in server-side VTK.
 
-## 3.6 JavaScript and WebAssembly
+## 3.5 JavaScript and WebAssembly
 
 VTK can be compiled to WebAssembly using Emscripten, allowing the full C++ VTK library to run directly in the browser with no server required. The `@kitware/vtk-wasm` npm package provides a ready-to-use bundle that can be loaded via a single `<script>` tag. The result is a self-contained HTML file — no build tools, no bundler, no backend.
 
@@ -718,7 +692,7 @@ Then open `http://localhost:8000/cone.html` in your browser. You can rotate, zoo
 
 The vtk-wasm approach and trame serve different deployment models:
 
-| | vtk-wasm (Section 3.6) | Trame (Section 3.5) |
+| | vtk-wasm (Section 3.5) | Trame (Section 3.4) |
 |---|---|---|
 | **Runs where** | Entirely in the browser | Python server + browser client |
 | **VTK implementation** | Full C++ VTK compiled to Wasm | Native C++ VTK on the server |
@@ -728,7 +702,7 @@ The vtk-wasm approach and trame serve different deployment models:
 
 vtk-wasm is ideal when you want to ship a self-contained visualization with no backend infrastructure. Trame is the better choice when you need a Python backend for data processing, shared state management, or server-side rendering of large datasets.
 
-## 3.7 Lightweight Desktop GUIs with Dear ImGui
+## 3.6 Lightweight Desktop GUIs with Dear ImGui
 
 [Dear ImGui](https://github.com/ocornut/imgui) is a lightweight immediate-mode GUI library popular in game engines, tools, and scientific applications. It is well suited for building VTK visualization tools that need simple controls (sliders, buttons, checkboxes) without the weight of a full widget toolkit like Qt. The Python package `imgui_bundle` provides Dear ImGui bindings along with a ready-made application runner.
 
@@ -905,7 +879,7 @@ immapp.run(runner_params)
 
 **Context initialization timing.** The `init_vtk_context` callback is registered as a `post_init` callback on the ImGui runner. This ensures VTK initializes its OpenGL state only after ImGui's OpenGL context is fully created and current. Calling `OpenGLInitContext()` earlier would fail because there would be no valid context to initialize against.
 
-## 3.8 A Tour of VTK Language Bindings
+## 3.7 A Tour of VTK Language Bindings
 
 VTK's core is written in C++ and shipped with official wrappings for Java and Python. But because those wrappings exist, any language that can call into Java or Python can also use VTK. This section demonstrates the same example — creating a cone, mapping it, rendering it, and starting an interactive window — in six different languages. Comparing the examples side by side shows how uniform VTK's API is across language boundaries: the pipeline structure is always the same, and only the syntax varies.
 
@@ -1224,3 +1198,39 @@ Every example above creates the same visualization pipeline: a cone source conne
 | F# | ActiViz (.NET binding) | `vtkConeSource.New()` | `Kitware.VTK` NuGet |
 | Julia | PyCall → VTK Python | `vtk.vtkConeSource()` | `PyCall` + VTK Python |
 | Ruby | pycall → VTK Python | `vtkConeSource.new` | `pycall` gem + VTK Python |
+
+### Converting Between Languages
+
+Because VTK's API is generated from the same C++ class definitions, converting code between languages is straightforward. Class names and method names stay the same — only the syntax around them changes. For example, to set an actor's color:
+
+**C++** uses `->` for pointer access:
+```cpp
+anActor->GetProperty()->SetColor(red, green, blue);
+```
+
+**Python** and **Java** use `.` for member access:
+```python
+anActor.GetProperty().SetColor(red, green, blue)
+```
+
+**C#** and **F#** use the same dot syntax:
+```csharp
+anActor.GetProperty().SetColor(red, green, blue);
+```
+
+**JavaScript (WebAssembly)** is the exception. The Wasm bindings use camelCase method names instead of PascalCase, and all calls are `async`:
+```javascript
+await (await anActor.getProperty()).setColor(red, green, blue);
+```
+
+The table below summarizes the naming conventions:
+
+| Language | Method style | Example |
+|---|---|---|
+| C++ | PascalCase, `->` | `actor->SetMapper(mapper)` |
+| Python | PascalCase, `.` | `actor.SetMapper(mapper)` |
+| Java / Groovy | PascalCase, `.` | `actor.SetMapper(mapper)` |
+| C# / F# | PascalCase, `.` | `actor.SetMapper(mapper)` |
+| JavaScript (Wasm) | camelCase, `await` | `await actor.setMapper(mapper)` |
+
+One limitation to keep in mind: some C++ operations cannot be directly expressed in the wrapped languages because they involve raw pointer manipulation. While it is always possible to get and set individual values through the bindings, it is not always possible to obtain a raw pointer to efficiently traverse and modify a large data structure. If your application requires this level of data access, you can either develop directly in C++ or extend VTK at the C++ level with custom high-performance classes, then use those classes from your preferred language.
