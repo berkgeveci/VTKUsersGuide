@@ -1469,4 +1469,93 @@ A special contouring class is available to generate isocontours for unstructured
 
 The class vtkContourGrid is a higher-performing version than the generic vtkContourFilter isocontouring filter. Normally you do not need to instantiate this class directly since vtkContourFilter will automatically create an internal instance of vtkContourGrid if it senses that its input is of type vtkUnstructuredGrid.
 
+## 5.6 Performance Notes
+
+VTK includes a number of high-performance filter implementations that can dramatically improve throughput on large datasets. In many cases these optimizations are applied transparently — you use the familiar filter interface and VTK selects the fast path internally. This section highlights the most important performance features and offers guidance on filter selection.
+
+### FlyingEdges vs. Marching Cubes
+
+The classic Marching Cubes algorithm for isosurface extraction has been largely superseded in VTK by the **Flying Edges** algorithm (`vtkFlyingEdges3D` for 3D volumes, `vtkFlyingEdges2D` for 2D images). Flying Edges avoids the overhead of hash-based point merging and uses a multi-pass design that parallelizes well across CPU cores.
+
+You do not need to instantiate these classes directly. When you use `vtkContourFilter` on `vtkImageData`, VTK automatically delegates to `vtkFlyingEdges3D` (or `vtkFlyingEdges2D` for 2D data). This means existing code benefits from the speedup without modification:
+
+```python
+from vtkmodules.vtkFiltersCore import vtkContourFilter
+
+contour = vtkContourFilter()
+contour.SetInputConnection(image_source.GetOutputPort())
+contour.SetValue(0, 128.0)
+# Internally uses vtkFlyingEdges3D when input is vtkImageData
+```
+
+Similarly, `vtkContourGrid` is used automatically when `vtkContourFilter` detects that its input is a `vtkUnstructuredGrid`.
+
+### SMP-Accelerated Filters
+
+Many VTK filters are parallelized using VTK's **Shared Memory Parallelism (SMP)** framework (`vtkSMPTools`). These filters automatically use multiple threads when a threading backend (TBB, OpenMP, or C++ std::thread) is available at build time. No code changes are required — parallelism is enabled by default.
+
+Key SMP-accelerated filters include:
+
+| Filter | Benefit |
+|--------|---------|
+| `vtkFlyingEdges3D` / `2D` | Parallel isosurface generation |
+| `vtkPlaneCutter` | Parallel plane cutting (preferred over `vtkCutter` for plane cuts) |
+| `vtkContourGrid` | Parallel contouring for unstructured grids |
+| `vtkStaticPointLocator` | Parallel locator construction |
+| `vtkStaticCellLocator` | Parallel locator construction |
+
+You can control the number of threads globally:
+
+```python
+from vtkmodules.vtkCommonCore import vtkSMPTools
+
+vtkSMPTools.SetBackend("STDThread")  # or "TBB", "OpenMP"
+vtkSMPTools.Initialize(8)            # use 8 threads
+```
+
+### Static Locators
+
+When performing many spatial queries — closest point, point-in-cell, ray intersection — the choice of locator matters. VTK's **static locators** (`vtkStaticPointLocator`, `vtkStaticCellLocator`) build their search structures using parallel (SMP) algorithms and are significantly faster to construct than their incremental counterparts (`vtkPointLocator`, `vtkCellLocator`). The trade-off is that static locators do not support incremental insertion; they must be built all at once from existing data.
+
+Use static locators when:
+- The dataset does not change between queries (most common case)
+- You are performing many queries (e.g., probing at thousands of points)
+- Construction time is a bottleneck
+
+```python
+from vtkmodules.vtkCommonDataModel import vtkStaticPointLocator
+
+locator = vtkStaticPointLocator()
+locator.SetDataSet(polydata)
+locator.BuildLocator()
+
+closest_id = locator.FindClosestPoint(x, y, z)
+```
+
+### Filter Selection Guide
+
+The following table summarizes recommended filters for common visualization tasks and their supported input types.
+
+| Task | Recommended Filter | Input Type |
+|------|--------------------|------------|
+| Isosurface (image data) | `vtkContourFilter` (auto-delegates to `vtkFlyingEdges3D`) | `vtkImageData` |
+| Isosurface (unstructured) | `vtkContourFilter` (auto-delegates to `vtkContourGrid`) | `vtkUnstructuredGrid` |
+| Plane cut | `vtkPlaneCutter` (SMP) | Any `vtkDataSet` |
+| General cut (implicit function) | `vtkCutter` | Any `vtkDataSet` |
+| Clip polydata | `vtkClipPolyData` | `vtkPolyData` |
+| Clip any dataset | `vtkTableBasedClipDataSet` | Any `vtkDataSet` |
+| Threshold (cells) | `vtkThreshold` | Any `vtkDataSet` |
+| Threshold (points) | `vtkThresholdPoints` | Any `vtkDataSet` |
+| Extract connected regions | `vtkConnectivityFilter` | Any `vtkDataSet` |
+| Extract connected regions (polydata) | `vtkPolyDataConnectivityFilter` | `vtkPolyData` |
+| Resample to image grid | `vtkResampleToImage` | Any `vtkDataSet` |
+| Resample between meshes | `vtkResampleWithDataSet` | Any `vtkDataSet` |
+| Probe at points | `vtkProbeFilter` | Any `vtkDataSet` |
+| Decimate triangle mesh | `vtkQuadricDecimation` | `vtkPolyData` (triangles) |
+| Smooth triangle mesh | `vtkWindowedSincPolyDataFilter` | `vtkPolyData` |
+| Compute derived arrays | `vtkArrayCalculator` | Any `vtkDataSet` |
+| Streamlines | `vtkStreamTracer` | Any `vtkDataSet` with vectors |
+| Warp by scalar | `vtkWarpScalar` | Any `vtkPointSet` |
+| Warp by vector | `vtkWarpVector` | Any `vtkPointSet` |
+
 This concludes our overview of visualization techniques. You may also wish to refer to the next chapter which describes image processing and volume rendering.
