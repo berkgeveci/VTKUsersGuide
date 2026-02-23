@@ -787,6 +787,10 @@ thresh_pts.SetThresholdFunction(thresh_pts.THRESHOLD_UPPER)
 thresh_pts.SetUpperThreshold(0.8)
 ```
 
+![Figure 5-10](images/Figure_5-10.png)
+
+*Figure 5–10 Thresholding a sampled quadric function. Left: `vtkThreshold` extracts cells with scalars in [0.5, 1.0]. Right: `vtkThresholdPoints` extracts points with scalars > 0.8.*
+
 > **See also:** [ThresholdCells](https://examples.vtk.org/site/Python/Meshes/ThresholdCells/) and [ThresholdPoints](https://examples.vtk.org/site/Python/Meshes/ThresholdPoints/) on the VTK Examples site.
 
 ### Warping
@@ -827,6 +831,10 @@ warp.SetScaleFactor(1.0)
 ```
 
 The `ScaleFactor` scales the displacement vectors uniformly. Setting it to a larger value exaggerates the deformation for visualization purposes, while a value of 1.0 shows the actual displacement magnitude.
+
+![Figure 5-11](images/Figure_5-11.png)
+
+*Figure 5–11 Warping geometry by data values. Left: `vtkWarpScalar` displaces a plane along Z by its elevation scalar. Right: `vtkWarpVector` deforms a sphere by a radial displacement field, creating a star-like shape.*
 
 > **See also:** [WarpScalar](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpScalar/), [WarpVector](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpVector/), and [WarpSurface](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpSurface/) on the VTK Examples site.
 
@@ -872,9 +880,9 @@ strip_actor.GetProperty().SetColor(0.3800, 0.7000, 0.1600)
 
 In C++, here's another example showing how to create a cube. This time we create six quadrilateral polygons, as well as scalar values at the vertices of the cube.
 
-![Figure 5-10](images/Figure_5-10.png)
+![Figure 5-12](images/Figure_5-12.png)
 
-*Figure 5–10 Comparing a mesh with and without surface normals.*
+*Figure 5–12 Comparing a mesh with and without surface normals.*
 
 ```cpp
 static double x[8][3]={{0,0,0}, {1,0,0}, {1,1,0}, {0,1,0},
@@ -903,7 +911,7 @@ vtkPolyData can be constructed with any combination of vertices, lines, polygons
 
 ### Generate Surface Normals
 
-When you render a polygonal mesh, you may find that the image clearly shows the faceted nature of the mesh (Figure 5–10). The image can be improved by using Gouraud shading (see Section 4.1, "Actor Properties"). However, Gouraud shading depends on the existence of normals at each point in the mesh. The vtkPolyDataNormals filter can be used to generate normals on the mesh. Two important instance variables are Splitting and FeatureAngle. If splitting is on, feature edges (defined as edges where the polygonal normals on either side of the edge make an angle greater than or equal to the feature angle) are "split," that is, points are duplicated along the edge, and the mesh is separated on either side of the feature edge (see The Visualization Toolkit text). This creates new points, but allows sharp corners to be rendered crisply.
+When you render a polygonal mesh, you may find that the image clearly shows the faceted nature of the mesh (Figure 5–12). The image can be improved by using Gouraud shading (see Section 4.1, "Actor Properties"). However, Gouraud shading depends on the existence of normals at each point in the mesh. The vtkPolyDataNormals filter can be used to generate normals on the mesh. Two important instance variables are Splitting and FeatureAngle. If splitting is on, feature edges (defined as edges where the polygonal normals on either side of the edge make an angle greater than or equal to the feature angle) are "split," that is, points are duplicated along the edge, and the mesh is separated on either side of the feature edge (see The Visualization Toolkit text). This creates new points, but allows sharp corners to be rendered crisply.
 
 Another important instance variable is FlipNormals. Invoking FlipNormalsOn() causes the filter to reverse the direction of the normals (and the ordering of the polygon connectivity list).
 
@@ -911,18 +919,18 @@ Another important instance variable is FlipNormals. Invoking FlipNormalsOn() cau
 
 
 
-![Figure 5-11](images/Figure_5-11.png)
+![Figure 5-13](images/Figure_5-13.png)
 
-*Figure 5–11 Triangle mesh before (left) and after (right) 90% decimation.*
+*Figure 5–13 Triangle mesh before (left) and after (right) 90% decimation.*
 
 Polygonal data, especially triangle meshes, are a common form of graphics data. Filters such as vtkContourFilter generate triangle meshes. Often, these meshes are quite large and cannot be rendered or processed quickly enough for interactive application. Decimation techniques have been developed to address this problem. Decimation, also referred to as polygonal reduction, mesh simplification, or multiresolution modeling, is a process to reduce the number of triangles in a triangle mesh, while maintaining a faithful approximation to the original mesh. VTK supports three decimation methods: vtkDecimatePro, vtkQuadricClustering, and vtkQuadricDecimation. All are similar in usage and application, although they each offer advantages and disadvantages as follows:
 - vtkDecimatePro is relatively fast and has the ability to modify topology during the reduction process. It uses an edge collapse process to eliminate vertices and triangles. Its error metric is based on distance to plane/distance to edge. A nice feature of vtkDecimatePro is that you can achieve any level of reduction requested, since the algorithm will begin tearing the mesh into pieces to achieve this (if topology modification is allowed).
 - vtkQuadricDecimation uses the quadric error measure proposed by Garland and Heckbert in Siggraph '97 Surface Simplification Using Quadric Error Metrics. It uses an edge collapse to eliminate vertices and triangles. The quadric error metric is generally accepted as one of the better error metrics.
-- vtkQuadricClustering is the fastest algorithm. It is based on the algorithm presented by Peter Lindstrom in his Siggraph 2000 paper Out-of-Core Simplification of Large Polygonal Models. It is capable of quickly reducing huge meshes, and the class supports the ability to process pieces of a mesh (using the StartAppend(), Append(), and EndAppend() methods). This enables the user to avoid reading an entire mesh into memory. This algorithm works well with large meshes; the triangulation process does not work well as meshes become smaller. (Combining this algorithm with one of the other algorithms is a good approach.) Here's an example using vtkDecimatePro (see `examples/deci_fran.py` and Figure 5–11).
+- vtkQuadricClustering is the fastest algorithm. It is based on the algorithm presented by Peter Lindstrom in his Siggraph 2000 paper Out-of-Core Simplification of Large Polygonal Models. It is capable of quickly reducing huge meshes, and the class supports the ability to process pieces of a mesh (using the StartAppend(), Append(), and EndAppend() methods). This enables the user to avoid reading an entire mesh into memory. This algorithm works well with large meshes; the triangulation process does not work well as meshes become smaller. (Combining this algorithm with one of the other algorithms is a good approach.) Here's an example using vtkDecimatePro (see `examples/deci_fran.py` and Figure 5–13).
 
-![Figure 5-12](images/Figure_5-12.png)
+![Figure 5-14](images/Figure_5-14.png)
 
-*Figure 5–12 Smoothing a polygonal mesh. Right image shows the effect of smoothing.*
+*Figure 5–14 Smoothing a polygonal mesh. Right image shows the effect of smoothing.*
 
 ```python
 from vtkmodules.vtkFiltersCore import vtkDecimatePro, vtkPolyDataNormals
@@ -953,7 +961,7 @@ A final note: the decimation filters take triangle data as input. If you have a 
 
 Polygonal meshes often contain noise or excessive roughness that affect the quality of the rendered image. For example, isosurfacing low resolution data can show aliasing, or stepping effects. One way to treat this problem is to use smoothing. Smoothing is a process that adjusts the positions of points to reduce the noise content in the surface.
 
-VTK offers two smoothing objects: vtkSmoothPolyDataFilter and vtkWindowedSincPolyDataFilter. Of the two, the vtkWindowedSincPolyDataFilter gives the best results and is slightly faster. The following example (see `examples/smooth_fran.py`) shows how to use the smoothing filter. The example is the same as the one in the previous section, except that a smoothing filter has been added. Figure 5–12 shows the effects of smoothing on the decimated mesh.
+VTK offers two smoothing objects: vtkSmoothPolyDataFilter and vtkWindowedSincPolyDataFilter. Of the two, the vtkWindowedSincPolyDataFilter gives the best results and is slightly faster. The following example (see `examples/smooth_fran.py`) shows how to use the smoothing filter. The example is the same as the one in the previous section, except that a smoothing filter has been added. Figure 5–14 shows the effects of smoothing on the decimated mesh.
 
 ```python
 from vtkmodules.vtkFiltersCore import (
@@ -987,11 +995,11 @@ Both smoothing filters are used similarly. There are optional methods for contro
 
 ### Clip Data
 
-Clipping, like cutting (see "Cutting" above), uses an implicit function to define a surface with which to clip. Clipping separates a polygonal mesh into pieces, as shown in Figure 5–13. Clipping will break polygonal primitives into separate parts on either side of the clipping surface. Like cutting, clipping allows you to set a clip value defining the value of the implicit clipping function. The following example uses a plane to clip a polygonal model of a cow. The clip value is used to move the plane along its normal so that the model can be clipped at different locations (see `examples/clip_cow.py`).
+Clipping, like cutting (see "Cutting" above), uses an implicit function to define a surface with which to clip. Clipping separates a polygonal mesh into pieces, as shown in Figure 5–15. Clipping will break polygonal primitives into separate parts on either side of the clipping surface. Like cutting, clipping allows you to set a clip value defining the value of the implicit clipping function. The following example uses a plane to clip a polygonal model of a cow. The clip value is used to move the plane along its normal so that the model can be clipped at different locations (see `examples/clip_cow.py`).
 
-![Figure 5-13](images/Figure_5-13.png)
+![Figure 5-15](images/Figure_5-15.png)
 
-*Figure 5–13 Clipping a model.*
+*Figure 5–15 Clipping a model.*
 
 ```python
 from vtkmodules.vtkCommonDataModel import vtkPlane
@@ -1123,9 +1131,9 @@ In this example a random set of points in the unit sphere is triangulated. The t
 
 (As a side note: instances of vtkDataSetMapper are mappers that accept any type of data as input. They use an internal instance of vtkGeometryFilter followed by vtkPolyDataMapper to convert the data into polygonal primitives that can then be passed to the rendering engine. See "Extract Cells as Polygonal Data" above for further information.)
 
-![Figure 5-14](images/Figure_5-14.png)
+![Figure 5-16](images/Figure_5-16.png)
 
-*Figure 5–14 Transforming texture coordinates.*
+*Figure 5–16 Transforming texture coordinates.*
 
 ## 5.3 Visualizing Structured Grids
 
