@@ -728,3 +728,180 @@ The vtk-wasm approach and trame serve different deployment models:
 | **Best for** | Standalone demos, static sites, offline apps | Multi-user apps, large data, server-side processing |
 
 vtk-wasm is ideal when you want to ship a self-contained visualization with no backend infrastructure. Trame is the better choice when you need a Python backend for data processing, shared state management, or server-side rendering of large datasets.
+
+## 3.7 Lightweight Desktop GUIs with Dear ImGui
+
+[Dear ImGui](https://github.com/ocornut/imgui) is a lightweight immediate-mode GUI library popular in game engines, tools, and scientific applications. It is well suited for building VTK visualization tools that need simple controls (sliders, buttons, checkboxes) without the weight of a full widget toolkit like Qt. The Python package `imgui_bundle` provides Dear ImGui bindings along with a ready-made application runner.
+
+The integration strategy is similar to Qt's: VTK renders offscreen into a framebuffer object (FBO), and the resulting OpenGL texture is handed directly to ImGui for display. Because both VTK and ImGui share the same OpenGL context, no pixel readback or format conversion is needed — the texture handle is passed directly to `imgui.image()`.
+
+### Installation
+
+Install the `imgui_bundle` package alongside VTK:
+
+```bash
+pip install imgui-bundle vtk
+```
+
+### Example: VTK Cone with ImGui Controls
+
+The following example creates a fullscreen ImGui application with a VTK viewport and a slider that controls the cone resolution (see `examples/ImGuiCone.py`):
+
+```python
+import vtk
+from imgui_bundle import imgui, immapp, hello_imgui
+
+class VtkImGuiRenderer:
+    def __init__(self):
+        self.renderer = vtk.vtkRenderer()
+
+        # Offscreen rendering into a shared OpenGL context
+        self.render_window = vtk.vtkGenericOpenGLRenderWindow()
+        self.render_window.AddRenderer(self.renderer)
+        self.render_window.SetOwnContext(False)
+        self.render_window.SetOffScreenRendering(True)
+
+        # Generic interactor: receives events from ImGui, not a native window
+        self.interactor = vtk.vtkGenericRenderWindowInteractor()
+        self.interactor.SetRenderWindow(self.render_window)
+        style = vtk.vtkInteractorStyleTrackballCamera()
+        self.interactor.SetInteractorStyle(style)
+
+        # VTK pipeline
+        self.cone_source = vtk.vtkConeSource()
+        self.cone_source.SetResolution(6)
+
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputConnection(self.cone_source.GetOutputPort())
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+
+        self.renderer.AddActor(actor)
+        self.renderer.SetBackground(0.15, 0.15, 0.2)
+        self.renderer.SetUseFXAA(True)
+
+        self.is_interacting = False
+
+    def init_vtk_context(self):
+        self.render_window.SetMapped(True)
+        self.render_window.SetIsCurrent(True)
+        self.render_window.OpenGLInitContext()
+
+    def render_frame(self, phys_width, phys_height):
+        if phys_width <= 0 or phys_height <= 0:
+            return None
+
+        self.render_window.SetSize(int(phys_width), int(phys_height))
+        self.render_window.Render()
+
+        # Get the texture handle directly from VTK's framebuffer
+        fbo = self.render_window.GetRenderFramebuffer()
+        if fbo:
+            tex = fbo.GetColorAttachmentAsTextureObject(0)
+            if tex:
+                return tex.GetHandle()
+        return None
+
+    def handle_input(self, pos, logical_size):
+        io = imgui.get_io()
+        is_hovered = imgui.is_window_hovered()
+
+        if is_hovered and (imgui.is_mouse_clicked(0)
+                           or imgui.is_mouse_clicked(1)):
+            self.is_interacting = True
+
+        if not is_hovered and not self.is_interacting:
+            return
+
+        dpi_scale = io.display_framebuffer_scale
+        rel_x = io.mouse_pos.x - pos.x
+        rel_y = logical_size.y - (io.mouse_pos.y - pos.y)
+        phys_x = int(rel_x * dpi_scale.x)
+        phys_y = int(rel_y * dpi_scale.y)
+
+        self.interactor.SetEventInformation(
+            phys_x, phys_y, int(io.key_ctrl), int(io.key_shift))
+
+        if imgui.is_mouse_clicked(0):
+            self.interactor.LeftButtonPressEvent()
+        elif imgui.is_mouse_released(0):
+            self.interactor.LeftButtonReleaseEvent()
+        if imgui.is_mouse_clicked(1):
+            self.interactor.RightButtonPressEvent()
+        elif imgui.is_mouse_released(1):
+            self.interactor.RightButtonReleaseEvent()
+
+        self.interactor.MouseMoveEvent()
+
+        if imgui.is_mouse_released(0) or imgui.is_mouse_released(1):
+            self.is_interacting = False
+
+
+vtk_engine = VtkImGuiRenderer()
+
+def gui():
+    viewport = imgui.get_main_viewport()
+    imgui.set_next_window_pos(viewport.work_pos)
+    imgui.set_next_window_size(viewport.work_size)
+
+    flags = (imgui.WindowFlags_.no_decoration
+             | imgui.WindowFlags_.no_move
+             | imgui.WindowFlags_.no_saved_settings)
+
+    imgui.begin("Main Application", p_open=None, flags=flags)
+
+    # ImGui slider controls the VTK pipeline
+    current_res = vtk_engine.cone_source.GetResolution()
+    changed, new_res = imgui.slider_int(
+        "Cone Resolution", current_res, 3, 50)
+    if changed:
+        vtk_engine.cone_source.SetResolution(new_res)
+
+    imgui.separator()
+
+    # VTK viewport fills remaining space
+    logical_size = imgui.get_content_region_avail()
+    pos = imgui.get_cursor_screen_pos()
+
+    dpi_scale = imgui.get_io().display_framebuffer_scale
+    phys_w = int(logical_size.x * dpi_scale.x)
+    phys_h = int(logical_size.y * dpi_scale.y)
+
+    vtk_engine.handle_input(pos, logical_size)
+    raw_tex_id = vtk_engine.render_frame(phys_w, phys_h)
+
+    if raw_tex_id is not None:
+        if hasattr(imgui, "ImTextureRef"):
+            tex_obj = imgui.ImTextureRef(raw_tex_id)
+        else:
+            tex_obj = imgui.ImTextureID(raw_tex_id)
+
+        imgui.image(tex_obj, logical_size,
+                    uv0=imgui.ImVec2(0, 1),
+                    uv1=imgui.ImVec2(1, 0))
+    else:
+        imgui.text("Waiting for VTK to generate texture...")
+
+    imgui.end()
+
+
+runner_params = hello_imgui.RunnerParams()
+runner_params.callbacks.show_gui = gui
+runner_params.callbacks.post_init = vtk_engine.init_vtk_context
+runner_params.app_window_params.window_title = "VTK 9 + Dear ImGui"
+runner_params.app_window_params.window_geometry.size = (1000, 800)
+
+immapp.run(runner_params)
+```
+
+### How It Works
+
+**Shared OpenGL context.** The key to this integration is `SetOwnContext(False)` on the `vtkGenericOpenGLRenderWindow`. This tells VTK not to create its own OpenGL context but to use the one already active — which is the context ImGui's backend created. Both libraries then share the same GPU state.
+
+**Texture passing instead of pixel readback.** Unlike approaches that copy pixels from VTK into a CPU-side image (as required by Swing or Tkinter), this integration passes the GPU texture handle directly. After VTK renders, `GetRenderFramebuffer()` retrieves the FBO, and `GetColorAttachmentAsTextureObject(0)` returns the color texture. Its OpenGL handle is passed to `imgui.image()`, which draws it as a textured quad. This zero-copy approach is efficient even at high resolutions.
+
+**DPI-aware coordinate handling.** On high-DPI displays (e.g., Retina), ImGui reports logical coordinates while VTK and OpenGL work in physical pixels. The `display_framebuffer_scale` factor converts between the two. The VTK render window is sized in physical pixels, while mouse coordinates are translated from ImGui's logical space.
+
+**Event forwarding.** Mouse events are captured from ImGui's input state and forwarded to `vtkGenericRenderWindowInteractor`. The `is_interacting` flag ensures that a drag operation that starts inside the VTK viewport continues to track the mouse even if the cursor moves outside the viewport — this prevents the camera from jumping when the user drags near the edge.
+
+**Context initialization timing.** The `init_vtk_context` callback is registered as a `post_init` callback on the ImGui runner. This ensures VTK initializes its OpenGL state only after ImGui's OpenGL context is fully created and current. Calling `OpenGLInitContext()` earlier would fail because there would be no valid context to initialize against.
