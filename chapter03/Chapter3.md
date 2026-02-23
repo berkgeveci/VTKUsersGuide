@@ -6,9 +6,11 @@ The purpose of this chapter is to provide you with an overview of the Visualizat
 
 The Visualization Toolkit consists of two basic subsystems: a compiled C++ class library and an "interpreted" wrapper layer that lets you manipulate the compiled classes using the languages Java and Python. See Figure 3–1 below:
 
-![Figure 3-1: The Visualization Toolkit architecture](images/Figure_3-1.png)
+<div align="center">
+<img src="images/Figure_3-1.png" alt="Figure 3-1: The Visualization Toolkit architecture" width="400">
 
 *Figure 3–1: The Visualization Toolkit consists of a compiled (C++) core with language bindings for Python, Java, .NET, and JavaScript.*
+</div>
 
 The advantage of this architecture is that you can build efficient (in both CPU and memory usage) algorithms in the compiled C++ language, and retain the rapid code development features of interpreted languages (avoidance of compile/link cycle, simple but powerful tools, and access to GUI tools). Of course, for those proficient in C++ and who have the tools to do so, applications can be built entirely in C++.
 

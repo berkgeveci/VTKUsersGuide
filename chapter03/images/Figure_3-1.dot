@@ -20,8 +20,8 @@ digraph vtk_architecture {
         wrapper_label [
             label=<
                 <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
-                    <TR><TD><FONT POINT-SIZE="18">Language Bindings</FONT></TD></TR>
-                    <TR><TD><FONT POINT-SIZE="14">(Python, Java, .NET, JavaScript)</FONT></TD></TR>
+                    <TR><TD><FONT POINT-SIZE="11">Language Bindings</FONT></TD></TR>
+                    <TR><TD><FONT POINT-SIZE="9">(Python, Java, .NET, JavaScript)</FONT></TD></TR>
                 </TABLE>
             >
         ]
@@ -31,14 +31,14 @@ digraph vtk_architecture {
             style="filled"
             fillcolor="lightgray"
             color="black"
-            penwidth=2
-            margin=30
+            penwidth=1.5
+            margin=15
 
             core_label [
                 label=<
                     <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
-                        <TR><TD><FONT POINT-SIZE="18">Compiled Core</FONT></TD></TR>
-                        <TR><TD><FONT POINT-SIZE="14">(C++)</FONT></TD></TR>
+                        <TR><TD><FONT POINT-SIZE="11">Compiled Core</FONT></TD></TR>
+                        <TR><TD><FONT POINT-SIZE="9">(C++)</FONT></TD></TR>
                     </TABLE>
                 >
             ]

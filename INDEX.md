@@ -7,35 +7,48 @@
 
 ## About This Guide
 
-This is a Markdown conversion of the VTK Users Guide, originally published in 2010 for VTK 5.0 and updated for modern VTK. The guide provides in-depth coverage of VTK's core concepts, visualization techniques, and programming interfaces across C++, Python, and Java.
+This is a modernized Markdown edition of the VTK Users Guide. The original guide was published in 2010 for VTK 5.0; this edition has been updated to reflect current VTK (9.x) with modern API patterns, current language bindings, and contemporary application frameworks.
 
 **Guide Specifications:**
-- **Original Format**: PDF (536 pages)
-- **VTK Version**: 5.0 (circa 2010)
-- **Languages Covered**: C++, Python, Java
-- **Conversion**: High-quality Markdown with 300 DPI images
+- **Languages Covered**: C++, Python, Java, plus examples in C#, F#, Groovy, Julia, Ruby
+- **Format**: GitHub-flavored Markdown with 300 DPI figures
 
 ---
 
 ## Chapters
 
-### [Chapter 3: System Overview](chapter03/Chapter3.md)
+### [Chapter 2: Installation](chapter02/Chapter2.md)
 
-Introduction to VTK's fundamental architecture and object model. Covers the two-tier compiled/interpreted design, the visualization pipeline, rendering engine components, and essential programming concepts including reference counting, smart pointers, and run-time type information.
+How to install VTK on your system. Covers pre-built packages, building from source, and cross-compiling for mobile and WebAssembly targets.
 
 **Key Topics:**
-- VTK's two-tier architecture (compiled C++ core with interpreted wrappers)
-- Object model: vtkObject, reference counting, smart pointers
-- Visualization pipeline: sources, filters, mappers
-- Rendering engine: actors, props, mappers, renderers
-- Creating applications in C++, Java, and Python
-- Language conversion guidelines
+- Pre-built packages: pip, conda, system package managers
+- Building from source with CMake
+- Enabling optional modules and language wrappings
+- Cross-compiling for iOS, Android, and WebAssembly
+
+---
+
+### [Chapter 3: System Overview](chapter03/Chapter3.md)
+
+Introduction to VTK's architecture and object model. Covers the compiled C++ core and its language bindings, the visualization pipeline, the rendering engine, and how to build applications across a variety of platforms and frameworks.
+
+**Key Topics:**
+- Two-tier architecture: compiled C++ core with Python, Java, .NET, and JavaScript bindings
+- Object model: vtkObject, reference counting, smart pointers, RTTI
+- Visualization pipeline: sources, filters, mappers, lazy evaluation
+- Rendering engine: actors, props, renderers, render windows
+- Building desktop applications with Qt
+- Web applications with Trame
+- Browser-based visualization with JavaScript and WebAssembly
+- Lightweight desktop GUIs with Dear ImGui
+- A tour of VTK language bindings (Java, Groovy, C#, F#, Julia, Ruby)
 
 ---
 
 ### [Chapter 4: The Basics](chapter04/ch4.md)
 
-Hands-on introduction to VTK through practical examples. Demonstrates common operations including creating simple models, reading data, applying filters, rendering techniques, and basic interaction.
+Hands-on introduction to VTK through practical examples. Demonstrates creating simple models, reading data, applying filters, rendering, and basic interaction.
 
 **Key Topics:**
 - Procedural and reader source objects
@@ -81,50 +94,41 @@ Focuses on vtkImageData (structured, regular datasets) and specialized image pro
 
 ### [Chapter 7: Volume Rendering](chapter07/Chapter7.md)
 
-In-depth exploration of direct volume rendering techniques for both structured (vtkImageData) and unstructured (vtkUnstructuredGrid) datasets. Covers the theory and practice of volume visualization.
+Direct volume rendering techniques for both structured (vtkImageData) and unstructured (vtkUnstructuredGrid) datasets. Covers the theory and practice of volume visualization.
 
 **Key Topics:**
 - Volume rendering vs. geometric rendering
 - vtkVolume, vtkVolumeProperty, vtkAbstractVolumeMapper
 - Ray casting techniques for vtkImageData
-- Texture-based volume rendering
 - Transfer functions (opacity and color)
 - Volume rendering for unstructured grids
-- Projection-based methods
 - Interactive rendering optimization
 
 ---
 
 ### [Chapter 8: Information Visualization](chapter08/Chapter8.md)
 
-Introduces information visualization concepts and VTK's capabilities for visualizing non-spatial data including tables, graphs, and trees. Covers metadata, relational databases, and abstract data structures.
+Information visualization concepts and VTK's capabilities for visualizing non-spatial data including tables, graphs, and trees.
 
 **Key Topics:**
 - Information visualization vs. scientific visualization
 - Tables (vtkTable): spreadsheets, databases, delimited text
 - Graphs (vtkGraph): social networks, pathways, relationships
 - Trees (vtkTree): hierarchies and organizational data
-- Converting tables to graphs
 - Graph layout algorithms
-- Clustering and relationship discovery
 - Interactive views for information visualization
 
 ---
 
 ### [Chapter 9: Geospatial Visualization](chapter09/Chapter9.md)
 
-Specialized techniques for geographic and geospatial data visualization. Covers rendering high-resolution maps and geographic datasets on Earth representations.
+Specialized techniques for geographic and geospatial data visualization.
 
 **Key Topics:**
-- Geographic views and representations (vtkGeoView)
-- Hierarchical image and geometry loading
+- Geographic views and representations
 - Texture mapping on Earth geometry
-- On-demand data streaming from disk/network
 - 3D geospatial rendering
 - Map projections and geographic coordinates
-- Integration with GIS data
-
-**Note**: API subject to change in VTK versions beyond 5.4
 
 ---
 
@@ -135,28 +139,22 @@ Advanced techniques for procedurally generating complex 3D models. Covers implic
 **Key Topics:**
 - Implicit modeling with distance fields
 - Boolean operations on implicit functions
-- Generating surfaces from lines and curves
 - Extrusion techniques
 - Delaunay triangulation
 - Surface reconstruction from unorganized points
 - Gaussian splatting
-- Creating models from field data
 
 ---
 
 ### [Chapter 11: Time Varying Data](chapter11/Chapter11.md)
 
-Infrastructure and techniques for handling temporal data in VTK. Covers the temporal extension to the visualization pipeline introduced in VTK 5.2.
+Infrastructure and techniques for handling temporal data in VTK.
 
 **Key Topics:**
 - Temporal support in the visualization pipeline
 - Time-aware readers and filters
-- Pipeline execution for time-varying data
 - Temporal metadata (TIME_RANGE, TIME_STEPS, TIME_VALUE)
-- Flipbook-style animations
 - Temporal queries and analysis
-- Computing statistics over time
-- Backward compatibility considerations
 
 ---
 
@@ -165,14 +163,11 @@ Infrastructure and techniques for handling temporal data in VTK. Covers the temp
 Comprehensive guide to data I/O in VTK. Covers readers, writers, importers, exporters, and working with various file formats.
 
 **Key Topics:**
-- VTK native file formats (.vtk and .vt? XML formats)
+- VTK native file formats (.vtk and XML formats)
 - Reader classes for all data types
 - Third-party format support (EnSight, PLOT3D, etc.)
-- Writing data to files
 - Importers and exporters for complete scenes
-- Field data and custom data formats
 - Parallel file formats
-- Binary vs. text formats
 - Streaming and large data handling
 
 ---
@@ -184,12 +179,8 @@ User interaction mechanisms in VTK. Covers interactors, 3D widgets, picking, and
 **Key Topics:**
 - vtkRenderWindowInteractor platform-independent interaction
 - Interactor styles (trackball, joystick, flight, etc.)
-- Frame rate control (DesiredUpdateRate, StillUpdateRate)
 - 3D widgets for interactive manipulation
-- Widget types: planes, spheres, lines, boxes, etc.
 - Picking and selection mechanisms
-- Custom event bindings
-- Building custom interaction models
 - Observer pattern and callbacks
 
 ---
@@ -197,24 +188,17 @@ User interaction mechanisms in VTK. Covers interactors, 3D widgets, picking, and
 ## Using This Guide
 
 ### For Learning VTK
-Start with **Chapter 3** (System Overview) to understand VTK's architecture, then move to **Chapter 4** (The Basics) for hands-on examples. Chapters 5-13 can be read based on your specific needs.
+Start with **Chapter 2** (Installation) to get VTK running, then **Chapter 3** (System Overview) for the architecture, and **Chapter 4** (The Basics) for hands-on examples. Chapters 5-13 can be read based on your specific needs.
 
 ### For Reference
 Each chapter is self-contained with extensive code examples. Use the chapter summaries above to locate relevant topics, then jump directly to that chapter.
 
 ### Code Examples
 Examples are provided in multiple languages:
-- **C++** - Most comprehensive, full access to VTK features
+- **C++** - Full access to VTK features
 - **Python** - Rapid prototyping and scripting
-- **Java** - Object-oriented applications
-
-### Running Examples
-- VTK 5.0 source: `/Users/berk.geveci/Work/VTK/v5.0`
-- Current VTK: `/Users/berk.geveci/Work/VTK/git`
-- Test data: `/Users/berk.geveci/Data/VTK/Data`
-- VTK build: `/usr/local/scratch/builds/vtk/git-debug`
-
-See individual chapter READMEs for conversion notes and figure lists.
+- **Java** - Desktop and enterprise applications
+- Additional examples in C#, F#, Groovy, Julia, and Ruby
 
 ---
 
@@ -224,14 +208,3 @@ See individual chapter READMEs for conversion notes and figure lists.
 - **VTK Documentation**: [docs.vtk.org](https://docs.vtk.org)
 - **VTK Examples**: [examples.vtk.org](https://examples.vtk.org)
 - **VTK Source**: [gitlab.kitware.com/vtk/vtk](https://gitlab.kitware.com/vtk/vtk)
-
----
-
-## Document Information
-
-- **Original PDF**: VTKUsersGuide.pdf (536 pages)
-- **Created**: January 29, 2010
-- **Creator**: FrameMaker 9.0
-- **Markdown Conversion**: January-February 2026
-- **Image Quality**: 300 DPI PNG extraction
-- **Format**: GitHub-flavored Markdown (CommonMark compatible)
