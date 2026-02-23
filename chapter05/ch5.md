@@ -838,6 +838,103 @@ The `ScaleFactor` scales the displacement vectors uniformly. Setting it to a lar
 
 > **See also:** [WarpScalar](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpScalar/), [WarpVector](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpVector/), and [WarpSurface](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpSurface/) on the VTK Examples site.
 
+### Computing Derived Quantities
+
+`vtkArrayCalculator` evaluates mathematical expressions on data arrays to produce new arrays. This is useful for computing derived quantities — strain from displacement, speed from velocity components, or any custom formula — without writing a custom filter. The calculator operates on either point data or cell data, and supports standard functions (`sin`, `cos`, `exp`, `log`, `sqrt`, `abs`, etc.) along with arithmetic operators, `min`, `max`, and the cross/dot products `cross(v1,v2)` and `dot(v1,v2)` for vector arrays.
+
+The following example computes `sin(Elevation * pi)` on a plane with elevation scalars (see `examples/array_calculator.py`).
+
+```python
+from vtkmodules.vtkFiltersCore import vtkArrayCalculator, vtkElevationFilter
+from vtkmodules.vtkFiltersSources import vtkPlaneSource
+
+plane = vtkPlaneSource()
+plane.SetResolution(40, 40)
+
+elevation = vtkElevationFilter()
+elevation.SetInputConnection(plane.GetOutputPort())
+elevation.SetLowPoint(0, 0, 0)
+elevation.SetHighPoint(0, 1, 0)
+elevation.SetScalarRange(0, 1)
+
+calc = vtkArrayCalculator()
+calc.SetInputConnection(elevation.GetOutputPort())
+calc.SetAttributeTypeToPointData()
+calc.AddScalarArrayName("Elevation")
+calc.SetFunction("sin(Elevation * 3.14159265)")
+calc.SetResultArrayName("SineElevation")
+```
+
+Call `AddScalarArrayName()` or `AddVectorArrayName()` for each input array your expression references. The expression string uses these array names as variables. The result is stored as a new array with the name given by `SetResultArrayName()`. By default the calculator processes point data; use `SetAttributeTypeToCellData()` to operate on cell data instead.
+
+> **See also:** [ArrayCalculator](https://examples.vtk.org/site/Python/Filters/ArrayCalculator/) on the VTK Examples site.
+
+### Connectivity Analysis
+
+When a dataset contains multiple disconnected components — for example, after thresholding or clipping — `vtkConnectivityFilter` identifies the connected regions. It accepts any `vtkDataSet` as input and produces a `vtkUnstructuredGrid` with region labels.
+
+The filter supports several extraction modes:
+
+| Mode | Method | Effect |
+|------|--------|--------|
+| All regions | `SetExtractionModeToAllRegions()` | Labels every region; use with `ColorRegionsOn()` |
+| Largest region | `SetExtractionModeToLargestRegion()` | Keeps only the largest connected component |
+| Specified regions | `SetExtractionModeToSpecifiedRegions()` | Keeps regions added via `AddSpecifiedRegion(id)` |
+| Closest point | `SetExtractionModeToClosestPointRegion()` | Keeps the region closest to a given point |
+
+The following example thresholds a sampled quadric to produce disconnected pieces, then colors them by region ID (see `examples/connectivity.py`).
+
+```python
+from vtkmodules.vtkFiltersCore import vtkConnectivityFilter, vtkThreshold
+
+thresh = vtkThreshold()
+thresh.SetInputConnection(sample.GetOutputPort())
+thresh.SetThresholdFunction(thresh.THRESHOLD_BETWEEN)
+thresh.SetLowerThreshold(0.8)
+thresh.SetUpperThreshold(1.5)
+
+conn = vtkConnectivityFilter()
+conn.SetInputConnection(thresh.GetOutputPort())
+conn.SetExtractionModeToAllRegions()
+conn.ColorRegionsOn()
+```
+
+When `ColorRegionsOn()` is set, the filter adds a `RegionId` array to the point data, which can be used to color-map each region distinctly. For polygonal data specifically, `vtkPolyDataConnectivityFilter` offers the same functionality with better performance since it avoids the overhead of unstructured grid output.
+
+> **See also:** [ConnectivityFilter](https://examples.vtk.org/site/Python/Filtering/ConnectivityFilter/) on the VTK Examples site.
+
+### Data Resampling
+
+Resampling transfers data values from one mesh onto a different mesh topology. This is common when comparing simulations run on different grids, or when converting irregular meshes to regular grids for image-based processing.
+
+**vtkResampleToImage** converts any `vtkDataSet` into a `vtkImageData` by sampling on a uniform grid. You specify the output resolution with `SetSamplingDimensions()`. Points outside the input dataset are marked with a `vtkValidPointMask` array (0 = outside, 1 = valid), which you can use to threshold away invalid regions.
+
+```python
+from vtkmodules.vtkFiltersCore import vtkResampleToImage
+
+resample = vtkResampleToImage()
+resample.SetInputConnection(source.GetOutputPort())
+resample.SetSamplingDimensions(40, 40, 40)
+```
+
+**vtkResampleWithDataSet** is the more general form: it resamples one dataset onto the point locations of another dataset (of any type). This is useful for transferring data between meshes of different topology.
+
+```python
+from vtkmodules.vtkFiltersCore import vtkResampleWithDataSet
+
+resample = vtkResampleWithDataSet()
+resample.SetInputConnection(target_mesh.GetOutputPort())  # geometry to sample onto
+resample.SetSourceConnection(source_data.GetOutputPort())  # data to sample from
+```
+
+Both filters use `vtkProbeFilter` internally. If you need more control over the probing process — such as handling tolerance, using a specific locator, or probing at explicit point locations — use `vtkProbeFilter` directly. See `examples/resample_to_image.py` for a complete working example.
+
+![Figure 5-12](images/Figure_5-12.png)
+
+*Figure 5–12 Computing derived quantities, connectivity analysis, and data resampling. Left: `vtkArrayCalculator` computes sin(Elevation * pi). Middle: `vtkConnectivityFilter` colors disconnected regions. Right: `vtkResampleToImage` resamples an unstructured grid onto a regular image grid.*
+
+> **See also:** [ResampleWithDataset](https://examples.vtk.org/site/Python/Filters/ResampleWithDataset/) on the VTK Examples site.
+
 ## 5.2 Visualizing Polygonal Data
 
 Polygonal data (vtkPolyData) is an important form of visualization data. Its importance is due to its use as the geometry interface into the graphics hardware/rendering engine. Other data types must be converted into polygonal data in order to be rendered (with the exception of vtkImageData which uses special imaging or volume rendering techniques). You may wish to refer to "Extract Cells as Polygonal Data" above to see how this conversion is performed. Polygonal data (vtkPolyData) consists of combinations of vertices and polyvertices; lines and polylines; triangles, quadrilaterals, and polygons; and triangle strips. Most filters (that input vtkPolyData) will process any combination of this data; however, some filters (like vtkDecimatePro and vtkTubeFilter) will only process portions of the data (triangle meshes and lines).
@@ -880,9 +977,9 @@ strip_actor.GetProperty().SetColor(0.3800, 0.7000, 0.1600)
 
 In C++, here's another example showing how to create a cube. This time we create six quadrilateral polygons, as well as scalar values at the vertices of the cube.
 
-![Figure 5-12](images/Figure_5-12.png)
+![Figure 5-13](images/Figure_5-13.png)
 
-*Figure 5–12 Comparing a mesh with and without surface normals.*
+*Figure 5–13 Comparing a mesh with and without surface normals.*
 
 ```cpp
 static double x[8][3]={{0,0,0}, {1,0,0}, {1,1,0}, {0,1,0},
@@ -911,7 +1008,7 @@ vtkPolyData can be constructed with any combination of vertices, lines, polygons
 
 ### Generate Surface Normals
 
-When you render a polygonal mesh, you may find that the image clearly shows the faceted nature of the mesh (Figure 5–12). The image can be improved by using Gouraud shading (see Section 4.1, "Actor Properties"). However, Gouraud shading depends on the existence of normals at each point in the mesh. The vtkPolyDataNormals filter can be used to generate normals on the mesh. Two important instance variables are Splitting and FeatureAngle. If splitting is on, feature edges (defined as edges where the polygonal normals on either side of the edge make an angle greater than or equal to the feature angle) are "split," that is, points are duplicated along the edge, and the mesh is separated on either side of the feature edge (see The Visualization Toolkit text). This creates new points, but allows sharp corners to be rendered crisply.
+When you render a polygonal mesh, you may find that the image clearly shows the faceted nature of the mesh (Figure 5–13). The image can be improved by using Gouraud shading (see Section 4.1, "Actor Properties"). However, Gouraud shading depends on the existence of normals at each point in the mesh. The vtkPolyDataNormals filter can be used to generate normals on the mesh. Two important instance variables are Splitting and FeatureAngle. If splitting is on, feature edges (defined as edges where the polygonal normals on either side of the edge make an angle greater than or equal to the feature angle) are "split," that is, points are duplicated along the edge, and the mesh is separated on either side of the feature edge (see The Visualization Toolkit text). This creates new points, but allows sharp corners to be rendered crisply.
 
 Another important instance variable is FlipNormals. Invoking FlipNormalsOn() causes the filter to reverse the direction of the normals (and the ordering of the polygon connectivity list).
 
@@ -919,18 +1016,18 @@ Another important instance variable is FlipNormals. Invoking FlipNormalsOn() cau
 
 
 
-![Figure 5-13](images/Figure_5-13.png)
+![Figure 5-14](images/Figure_5-14.png)
 
-*Figure 5–13 Triangle mesh before (left) and after (right) 90% decimation.*
+*Figure 5–14 Triangle mesh before (left) and after (right) 90% decimation.*
 
 Polygonal data, especially triangle meshes, are a common form of graphics data. Filters such as vtkContourFilter generate triangle meshes. Often, these meshes are quite large and cannot be rendered or processed quickly enough for interactive application. Decimation techniques have been developed to address this problem. Decimation, also referred to as polygonal reduction, mesh simplification, or multiresolution modeling, is a process to reduce the number of triangles in a triangle mesh, while maintaining a faithful approximation to the original mesh. VTK supports three decimation methods: vtkDecimatePro, vtkQuadricClustering, and vtkQuadricDecimation. All are similar in usage and application, although they each offer advantages and disadvantages as follows:
 - vtkDecimatePro is relatively fast and has the ability to modify topology during the reduction process. It uses an edge collapse process to eliminate vertices and triangles. Its error metric is based on distance to plane/distance to edge. A nice feature of vtkDecimatePro is that you can achieve any level of reduction requested, since the algorithm will begin tearing the mesh into pieces to achieve this (if topology modification is allowed).
 - vtkQuadricDecimation uses the quadric error measure proposed by Garland and Heckbert in Siggraph '97 Surface Simplification Using Quadric Error Metrics. It uses an edge collapse to eliminate vertices and triangles. The quadric error metric is generally accepted as one of the better error metrics.
-- vtkQuadricClustering is the fastest algorithm. It is based on the algorithm presented by Peter Lindstrom in his Siggraph 2000 paper Out-of-Core Simplification of Large Polygonal Models. It is capable of quickly reducing huge meshes, and the class supports the ability to process pieces of a mesh (using the StartAppend(), Append(), and EndAppend() methods). This enables the user to avoid reading an entire mesh into memory. This algorithm works well with large meshes; the triangulation process does not work well as meshes become smaller. (Combining this algorithm with one of the other algorithms is a good approach.) Here's an example using vtkDecimatePro (see `examples/deci_fran.py` and Figure 5–13).
+- vtkQuadricClustering is the fastest algorithm. It is based on the algorithm presented by Peter Lindstrom in his Siggraph 2000 paper Out-of-Core Simplification of Large Polygonal Models. It is capable of quickly reducing huge meshes, and the class supports the ability to process pieces of a mesh (using the StartAppend(), Append(), and EndAppend() methods). This enables the user to avoid reading an entire mesh into memory. This algorithm works well with large meshes; the triangulation process does not work well as meshes become smaller. (Combining this algorithm with one of the other algorithms is a good approach.) Here's an example using vtkDecimatePro (see `examples/deci_fran.py` and Figure 5–14).
 
-![Figure 5-14](images/Figure_5-14.png)
+![Figure 5-15](images/Figure_5-15.png)
 
-*Figure 5–14 Smoothing a polygonal mesh. Right image shows the effect of smoothing.*
+*Figure 5–15 Smoothing a polygonal mesh. Right image shows the effect of smoothing.*
 
 ```python
 from vtkmodules.vtkFiltersCore import vtkDecimatePro, vtkPolyDataNormals
@@ -961,7 +1058,7 @@ A final note: the decimation filters take triangle data as input. If you have a 
 
 Polygonal meshes often contain noise or excessive roughness that affect the quality of the rendered image. For example, isosurfacing low resolution data can show aliasing, or stepping effects. One way to treat this problem is to use smoothing. Smoothing is a process that adjusts the positions of points to reduce the noise content in the surface.
 
-VTK offers two smoothing objects: vtkSmoothPolyDataFilter and vtkWindowedSincPolyDataFilter. Of the two, the vtkWindowedSincPolyDataFilter gives the best results and is slightly faster. The following example (see `examples/smooth_fran.py`) shows how to use the smoothing filter. The example is the same as the one in the previous section, except that a smoothing filter has been added. Figure 5–14 shows the effects of smoothing on the decimated mesh.
+VTK offers two smoothing objects: vtkSmoothPolyDataFilter and vtkWindowedSincPolyDataFilter. Of the two, the vtkWindowedSincPolyDataFilter gives the best results and is slightly faster. The following example (see `examples/smooth_fran.py`) shows how to use the smoothing filter. The example is the same as the one in the previous section, except that a smoothing filter has been added. Figure 5–15 shows the effects of smoothing on the decimated mesh.
 
 ```python
 from vtkmodules.vtkFiltersCore import (
@@ -995,11 +1092,11 @@ Both smoothing filters are used similarly. There are optional methods for contro
 
 ### Clip Data
 
-Clipping, like cutting (see "Cutting" above), uses an implicit function to define a surface with which to clip. Clipping separates a polygonal mesh into pieces, as shown in Figure 5–15. Clipping will break polygonal primitives into separate parts on either side of the clipping surface. Like cutting, clipping allows you to set a clip value defining the value of the implicit clipping function. The following example uses a plane to clip a polygonal model of a cow. The clip value is used to move the plane along its normal so that the model can be clipped at different locations (see `examples/clip_cow.py`).
+Clipping, like cutting (see "Cutting" above), uses an implicit function to define a surface with which to clip. Clipping separates a polygonal mesh into pieces, as shown in Figure 5–16. Clipping will break polygonal primitives into separate parts on either side of the clipping surface. Like cutting, clipping allows you to set a clip value defining the value of the implicit clipping function. The following example uses a plane to clip a polygonal model of a cow. The clip value is used to move the plane along its normal so that the model can be clipped at different locations (see `examples/clip_cow.py`).
 
-![Figure 5-15](images/Figure_5-15.png)
+![Figure 5-16](images/Figure_5-16.png)
 
-*Figure 5–15 Clipping a model.*
+*Figure 5–16 Clipping a model.*
 
 ```python
 from vtkmodules.vtkCommonDataModel import vtkPlane
@@ -1131,9 +1228,9 @@ In this example a random set of points in the unit sphere is triangulated. The t
 
 (As a side note: instances of vtkDataSetMapper are mappers that accept any type of data as input. They use an internal instance of vtkGeometryFilter followed by vtkPolyDataMapper to convert the data into polygonal primitives that can then be passed to the rendering engine. See "Extract Cells as Polygonal Data" above for further information.)
 
-![Figure 5-16](images/Figure_5-16.png)
+![Figure 5-17](images/Figure_5-17.png)
 
-*Figure 5–16 Transforming texture coordinates.*
+*Figure 5–17 Transforming texture coordinates.*
 
 ## 5.3 Visualizing Structured Grids
 
