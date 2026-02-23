@@ -475,6 +475,45 @@ For large datasets, consider `vtkPlaneCutter` as a modern, high-performance alte
 
 > **See also:** [Cutter](https://examples.vtk.org/site/Python/VisualizationAlgorithms/Cutter/) and [CutStructuredGrid](https://examples.vtk.org/site/Python/VisualizationAlgorithms/CutStructuredGrid/) on the VTK Examples site.
 
+### Clipping Volume Meshes
+
+While `vtkClipPolyData` (described in Section 5.2) only accepts polygonal data, `vtkTableBasedClipDataSet` clips any `vtkDataSet` — `vtkImageData`, `vtkStructuredGrid`, `vtkUnstructuredGrid`, and others. It is the modern, high-performance replacement for `vtkClipDataSet`, using pre-computed triangulation tables for fast clipping of all standard cell types.
+
+The following example clips a sampled quadric function (on a regular 3D grid) with a plane (see `examples/clip_volume.py`).
+
+```python
+from vtkmodules.vtkCommonDataModel import vtkPlane, vtkQuadric
+from vtkmodules.vtkFiltersGeneral import vtkTableBasedClipDataSet
+from vtkmodules.vtkFiltersGeometry import vtkGeometryFilter
+from vtkmodules.vtkImagingHybrid import vtkSampleFunction
+
+quadric = vtkQuadric()
+quadric.SetCoefficients(0.5, 1.0, 0.2, 0.0, 0.1, 0.0, 0.0, 0.2, 0.0, 0.0)
+
+sample = vtkSampleFunction()
+sample.SetSampleDimensions(30, 30, 30)
+sample.SetImplicitFunction(quadric)
+sample.ComputeNormalsOff()
+sample.Update()
+
+plane = vtkPlane()
+plane.SetOrigin(sample.GetOutput().GetCenter())
+plane.SetNormal(1, 0, 0)
+
+clipper = vtkTableBasedClipDataSet()
+clipper.SetInputConnection(sample.GetOutputPort())
+clipper.SetClipFunction(plane)
+clipper.SetValue(0.0)
+
+# Convert to polydata for rendering
+surface = vtkGeometryFilter()
+surface.SetInputConnection(clipper.GetOutputPort())
+```
+
+The output is always a `vtkUnstructuredGrid`, so follow with `vtkGeometryFilter` or use `vtkDataSetMapper` to render it. `vtkTableBasedClipDataSet` also supports `GenerateClippedOutputOn()` to retrieve the clipped-away portion, just like `vtkClipPolyData`.
+
+> **See also:** [ClipVolume](https://examples.vtk.org/site/Python/Meshes/ClipDataSetWithPolyData/) and [SolidClip](https://examples.vtk.org/site/Python/Meshes/SolidClip/) on the VTK Examples site.
+
 ### Merging Data
 
 Up to this point we have seen simple, linear visualization pipelines. However, it is possible for pipelines to branch, merge and even have loops. It is also possible for pieces of data to move from one leg of the pipeline to another. In this section and the following, we introduce two filters that allow you to build datasets from other datasets. We'll start with vtkMergeFilter. vtkMergeFilter merges pieces of data from several datasets into a new dataset. For example, you can take the structure (topology and geometry) from one dataset, the scalars from a second, and the vectors from a third dataset, and combine them into a single dataset. Here's an example of its use (see `examples/image_warp.py`). (Please ignore those filters that you don't recognize, focus on the use of vtkMergeFilter. We'll describe more fully the details of the script in Section 6.2.)
@@ -1139,45 +1178,6 @@ rest_actor.GetProperty().SetRepresentationToWireframe()
 ```
 
 The GenerateClippedOutputOn() method causes the filter to create a second output: the data that was clipped away. This output is shown in wireframe in the figure. If the SetValue() method is used to change the clip value, the implicit function will cut at a point parallel to the original plane, but above or below it. (You could also change the definition of vtkPlane to achieve the same result.)
-
-### Clipping Volume Meshes
-
-The previous example uses `vtkClipPolyData`, which only accepts polygonal data. To clip volume meshes — `vtkImageData`, `vtkStructuredGrid`, `vtkUnstructuredGrid`, or any other `vtkDataSet` — use `vtkTableBasedClipDataSet`. This filter is the modern, high-performance replacement for `vtkClipDataSet`; it uses pre-computed triangulation tables for fast clipping of all standard cell types.
-
-The following example clips a sampled quadric function (on a regular 3D grid) with a plane (see `examples/clip_volume.py`).
-
-```python
-from vtkmodules.vtkCommonDataModel import vtkPlane, vtkQuadric
-from vtkmodules.vtkFiltersGeneral import vtkTableBasedClipDataSet
-from vtkmodules.vtkFiltersGeometry import vtkGeometryFilter
-from vtkmodules.vtkImagingHybrid import vtkSampleFunction
-
-quadric = vtkQuadric()
-quadric.SetCoefficients(0.5, 1.0, 0.2, 0.0, 0.1, 0.0, 0.0, 0.2, 0.0, 0.0)
-
-sample = vtkSampleFunction()
-sample.SetSampleDimensions(30, 30, 30)
-sample.SetImplicitFunction(quadric)
-sample.ComputeNormalsOff()
-sample.Update()
-
-plane = vtkPlane()
-plane.SetOrigin(sample.GetOutput().GetCenter())
-plane.SetNormal(1, 0, 0)
-
-clipper = vtkTableBasedClipDataSet()
-clipper.SetInputConnection(sample.GetOutputPort())
-clipper.SetClipFunction(plane)
-clipper.SetValue(0.0)
-
-# Convert to polydata for rendering
-surface = vtkGeometryFilter()
-surface.SetInputConnection(clipper.GetOutputPort())
-```
-
-The output is always a `vtkUnstructuredGrid`, so follow with `vtkGeometryFilter` or use `vtkDataSetMapper` to render it. `vtkTableBasedClipDataSet` also supports `GenerateClippedOutputOn()` to retrieve the clipped-away portion, just like `vtkClipPolyData`.
-
-> **See also:** [ClipVolume](https://examples.vtk.org/site/Python/Meshes/ClipDataSetWithPolyData/) and [SolidClip](https://examples.vtk.org/site/Python/Meshes/SolidClip/) on the VTK Examples site.
 
 ### Generate Texture Coordinates
 
