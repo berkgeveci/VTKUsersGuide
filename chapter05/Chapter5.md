@@ -362,7 +362,7 @@ streamer.SetMaximumNumberOfSteps(500)
 
 The `SeparatingDistance` controls the minimum spacing between adjacent streamlines — smaller values produce denser coverage. For time-varying vector fields, `vtkParticleTracer` traces particle paths through a sequence of time steps, which is useful for transient flow visualization.
 
-> **See also:** [StreamLines](https://examples.vtk.org/site/Python/VisualizationAlgorithms/StreamLines/) and [BluntStreamlines](https://examples.vtk.org/site/Python/VisualizationAlgorithms/BluntStreamlines/) on the VTK Examples site.
+> **See also:** [StreamLines](https://examples.vtk.org/site/Python/Visualization/StreamLines/) and [BluntStreamlines](https://examples.vtk.org/site/Python/VisualizationAlgorithms/BluntStreamlines/) on the VTK Examples site.
 
 ### Stream Surfaces
 
@@ -898,7 +898,7 @@ thresh_pts.SetUpperThreshold(0.8)
 
 *Figure 5–10 Thresholding a sampled quadric function. Left: `vtkThreshold` extracts cells with scalars in [0.5, 1.0]. Right: `vtkThresholdPoints` extracts points with scalars > 0.8.*
 
-> **See also:** [ThresholdCells](https://examples.vtk.org/site/Python/Meshes/ThresholdCells/) and [ThresholdPoints](https://examples.vtk.org/site/Python/Meshes/ThresholdPoints/) on the VTK Examples site.
+> **See also:** The [VTK Examples](https://examples.vtk.org/site/Python/) site has additional threshold examples.
 
 ### Warping
 
@@ -943,7 +943,7 @@ The `ScaleFactor` scales the displacement vectors uniformly. Setting it to a lar
 
 *Figure 5–11 Warping geometry by data values. Left: `vtkWarpScalar` displaces a plane along Z by its elevation scalar. Right: `vtkWarpVector` deforms a sphere by a radial displacement field, creating a star-like shape.*
 
-> **See also:** [WarpScalar](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpScalar/), [WarpVector](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpVector/), and [WarpSurface](https://examples.vtk.org/site/Python/VisualizationAlgorithms/WarpSurface/) on the VTK Examples site.
+> **See also:** [WarpVector](https://examples.vtk.org/site/Python/PolyData/WarpVector/) on the VTK Examples site.
 
 ### Computing Derived Quantities
 
@@ -974,7 +974,7 @@ calc.SetResultArrayName("SineElevation")
 
 Call `AddScalarArrayName()` or `AddVectorArrayName()` for each input array your expression references. The expression string uses these array names as variables. The result is stored as a new array with the name given by `SetResultArrayName()`. By default the calculator processes point data; use `SetAttributeTypeToCellData()` to operate on cell data instead.
 
-> **See also:** [ArrayCalculator](https://examples.vtk.org/site/Python/Filters/ArrayCalculator/) on the VTK Examples site.
+> **See also:** The [VTK Examples](https://examples.vtk.org/site/Python/) site has additional calculator examples.
 
 ### Connectivity Analysis
 
@@ -1040,7 +1040,7 @@ Both filters use `vtkProbeFilter` internally. If you need more control over the 
 
 *Figure 5–12 Computing derived quantities, connectivity analysis, and data resampling. Left: `vtkArrayCalculator` computes sin(Elevation * pi). Middle: `vtkConnectivityFilter` colors disconnected regions. Right: `vtkResampleToImage` resamples an unstructured grid onto a regular image grid.*
 
-> **See also:** [ResampleWithDataset](https://examples.vtk.org/site/Python/Filters/ResampleWithDataset/) on the VTK Examples site.
+> **See also:** The [VTK Examples](https://examples.vtk.org/site/Python/) site has additional resampling examples.
 
 ## 5.2 Visualizing Polygonal Data
 
@@ -1702,6 +1702,6 @@ output_obj.PointData.append(distances, "Distance")
 
 This approach is significantly faster than iterating over points in Python, especially for large datasets.
 
-> **See also:** [vtkPythonAlgorithm](https://examples.vtk.org/site/Python/Developers/) examples on the VTK Examples site.
+> **See also:** The [VTK Examples](https://examples.vtk.org/site/Python/) site has additional Python algorithm examples.
 
 This concludes our overview of visualization techniques. You may also wish to refer to the next chapter which describes image processing and volume rendering.

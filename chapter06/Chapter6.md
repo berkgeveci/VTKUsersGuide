@@ -618,7 +618,7 @@ laplacian.SetDimensionality(2)
 
 See `examples/edge_detection.py` for a complete example comparing these filters.
 
-> **See also:** [ImageGradient](https://examples.vtk.org/site/Python/Images/ImageGradient/) on the VTK Examples site.
+> **See also:** [ImageGradient](https://examples.vtk.org/site/Python/VisualizationAlgorithms/ImageGradient/) on the VTK Examples site.
 
 ### Median Filtering
 
@@ -699,7 +699,7 @@ For 3D volumes, use `vtkImageAnisotropicDiffusion3D` with the same interface. Se
 
 *Figure 6–18 Image processing filters. From left: edge detection (`vtkImageGradientMagnitude`), median filtering of a noisy image, convolution with a sharpening kernel, and anisotropic diffusion for edge-preserving smoothing.*
 
-> **See also:** [MedianComparison](https://examples.vtk.org/site/Python/Images/MedianComparison/) and [HybridMedianComparison](https://examples.vtk.org/site/Python/Images/HybridMedianComparison/) on the VTK Examples site.
+> **See also:** [MedianComparison](https://examples.vtk.org/site/Python/ImageProcessing/MedianComparison/) and [HybridMedianComparison](https://examples.vtk.org/site/Python/ImageProcessing/HybridMedianComparison/) on the VTK Examples site.
 
 ### Morphological Operations
 
@@ -749,7 +749,7 @@ closing.SetCloseValue(255)
 
 See `examples/morphology.py` for a complete example.
 
-> **See also:** [DilateErode](https://examples.vtk.org/site/Python/Images/DilateErode/) on the VTK Examples site.
+> **See also:** [MorphologyComparison](https://examples.vtk.org/site/Python/ImageProcessing/MorphologyComparison/) on the VTK Examples site.
 
 ### FFT and Frequency Domain Filtering
 

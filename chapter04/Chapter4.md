@@ -265,7 +265,7 @@ The result array "SineElevation" is added to the output's point data. You can th
 
 For a thorough treatment of filtering — including warping, connectivity analysis, resampling, and more — refer to Chapter 5.
 
-> **See also:** The [VTK Examples](https://examples.vtk.org/site/Python/) collection includes complete, runnable scripts for [ClipVolume](https://examples.vtk.org/site/Python/Meshes/ClipDataSetWithPolyData/), [ThresholdCells](https://examples.vtk.org/site/Python/Meshes/ThresholdCells/), [ArrayCalculator](https://examples.vtk.org/site/Python/Utilities/ArrayCalculator/), and many other filters.
+> **See also:** The [VTK Examples](https://examples.vtk.org/site/Python/) collection includes complete, runnable scripts for [ClipDataSetWithPolyData](https://examples.vtk.org/site/Python/Meshes/ClipDataSetWithPolyData/), [SolidClip](https://examples.vtk.org/site/Python/Meshes/SolidClip/), [ConnectivityFilter](https://examples.vtk.org/site/Python/Filtering/ConnectivityFilter/), and many other filters.
 
 ## 4.3 Writing Data
 
