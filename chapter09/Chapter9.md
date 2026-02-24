@@ -6,9 +6,9 @@ VTK provides support for geospatial visualization through cartographic projectio
 
 The vtkGeoProjection class represents a cartographic projection from a sphere to a plane. VTK includes over 180 projections from the PROJ library, a few of which are shown in Figure 9–5.
 
-![Figure 9-5](images/Figure_9-5.png)
+![Figure 9-1](images/Figure_9-1.png)
 
-*Figure 9–5 Some interesting cartographic projections provided by the PROJ library.*
+*Figure 9–1 Some interesting cartographic projections provided by the PROJ library.*
 
 By default, new vtkGeoProjection instances are set to the natural cartographic transform named "latlong" (no projection at all). To use a specific projection, call `SetName()` with a PROJ projection identifier such as "robin" (Robinson), "moll" (Mollweide), "wintri" (Winkel Tripel), or "eck1" (Eckert I). You can also specify a full PROJ4 parameter string with `SetPROJ4String()`. Some projections accept additional parameters such as `SetCentralMeridian()`.
 
@@ -36,9 +36,9 @@ The vtkGeoTransform class moves points from one projection to another by applyin
 
 The following example creates a graticule (grid of constant-latitude and constant-longitude lines) in lat-long coordinates, then projects it through a Mollweide projection using vtkGeoTransform and vtkTransformPolyDataFilter. The result is shown in Figure 9–6.
 
-![Figure 9-6](images/Figure_9-6.png)
+![Figure 9-2](images/Figure_9-2.png)
 
-*Figure 9–6 A grid of equal latitude/longitude lines sent through a 2D projection.*
+*Figure 9–2 A grid of equal latitude/longitude lines sent through a 2D projection.*
 
 ```python
 import math

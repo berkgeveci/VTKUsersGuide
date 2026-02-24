@@ -49,9 +49,9 @@ A variety of interactor styles are provided with the toolkit. Below, we list som
 - vtkInteractorStyleAreaSelectHover - Similar to vtkInteractorStyleTreeMapHover except that it works with an area layout (see Chapter 8). 
 - vtkInteractorStyleUnicam - Single mouse button, context sensitive interaction.
 
-### Adding vtkRenderWindowInteractor
+### Adding vtkRenderWindowInteractor Observers
 
-Observers While a variety of interactor styles are available in VTK, you may prefer to create your own custom style to meet the needs of a particular application. In C++ the natural approach is to subclass vtkInteractorStyle. However, in an interpreted language (e.g., Python or Java), this is difficult to do. For interpreted languages the simplest approach is to use observers to define particular interaction bindings. (See Section 3.8.) The bindings can be managed in any language that VTK supports, including C++, Python, and Java. Here is an example of defining custom interaction bindings in Python.
+While a variety of interactor styles are available in VTK, you may prefer to create your own custom style to meet the needs of a particular application. In C++ the natural approach is to subclass vtkInteractorStyle. However, in an interpreted language (e.g., Python or Java), this is difficult to do. For interpreted languages the simplest approach is to use observers to define particular interaction bindings. (See Section 3.8.) The bindings can be managed in any language that VTK supports, including C++, Python, and Java. Here is an example of defining custom interaction bindings in Python.
 
 ```python
 from vtkmodules.vtkRenderingUI import vtkRenderWindowInteractor
@@ -510,7 +510,7 @@ rep->PlaceWidget(parallelopipedPts);
 
 *Image Plane Widget*
 
-Window-level is achieved by using the right mouse button. Window-level values can be reset by shift + 'r' or control + 'r'. One can reset the camera by pressing 'r' or 'R'. The left mouse button can be used to query the underlying image data with a snap-to cross-hair cursor. The nearest point in the input image data to the mouse cursor generates the cross-hairs. With oblique slicing, this behavior may appear unsatisfactory. Text annotations display the window-level and image coordinates/data values. The text annotation may be toggled on and off with SetDisplayText. The widget invokes a StartInteractionEvent, InteractionEvent and EndInteractionEvent at the beginning, during and end of an interaction. The events StartWindowLevelEvent, WindowLevelEvent, EndWindowLevelEvent and ResetWindowLevelEvent are invoked during their corresponding actions. The 
+Window-level is achieved by using the right mouse button. Window-level values can be reset by shift + 'r' or control + 'r'. One can reset the camera by pressing 'r' or 'R'. The left mouse button can be used to query the underlying image data with a snap-to cross-hair cursor. The nearest point in the input image data to the mouse cursor generates the cross-hairs. With oblique slicing, this behavior may appear unsatisfactory. Text annotations display the window-level and image coordinates/data values. The text annotation may be toggled on and off with SetDisplayText. The widget invokes a StartInteractionEvent, InteractionEvent and EndInteractionEvent at the beginning, during and end of an interaction. The events StartWindowLevelEvent, WindowLevelEvent, EndWindowLevelEvent and ResetWindowLevelEvent are invoked during their corresponding actions.
 
 The vtkImagePlaneWidget has several methods that can be used in conjunction with other VTK objects. The GetPolyData() method can be used to get the polygonal representation of the plane and can be used as input for other VTK objects. Some additional features of this class include the ability to control the properties of the widget. You can set the properties of: the selected and unselected representations of the plane's outline; the text actor via its vtkTextProperty; the cross-hair cursor. In addition there are methods to constrain the plane so that it is aligned along the x-y-z axes. Finally, one can specify the degree of interpolation used for reslicing the data: nearest neighbor, linear, and cubic. One can also choose between voxel centered or continuous cursor probing. With voxel centered probing, the cursor snaps to the nearest voxel and the reported cursor coordinates are extent based. With continuous probing, voxel data is interpolated using vtkDataSetAttributes' InterpolatePoint method and the reported coordinates are 3D spatial continuous. VTK/Widgets/Testing/Cxx/ImagePlaneWidget.cxx uses vtkImagePlaneWidget to interactively display axial, coronal and sagittal slices in a 3D volume. The following excerpt illustrates the usage of this widget.
 
@@ -1247,7 +1247,7 @@ vtkUnstructuredGrid* extracted = ex->GetOutput();
 ```
 
 Note that because vtkExtractSelection accepts any vtkDataSet subclass, the output is the most general dataset, vtkUnstructuredGrid. The output type cannot match the input type because, for example, a selection, which denotes an arbitrary subset, on a structured type like vtkImageData might no longer be structured. If you desire to simply mark selected elements of a dataset, call ex->PreserveTopologyOn() before updating the filter.
-This will pass the data structurally unchanged to the output, with the same data type. Instead of culling away rejected elements, the filter adds a boolean flag to each
+This will pass the data structurally unchanged to the output, with the same data type. Instead of culling away rejected elements, the filter adds a boolean flag to each element indicating whether it is selected or not.
 
 ![Figure 13-3](images/Figure_13-3.png)
 

@@ -326,7 +326,7 @@ To introduce this topic a concrete example is useful. In the previous chapter (S
 
 The data is in the following tabular format.
 
-```
+```text
 NUMBER_POINTS 3188
 TIME_LATE
 29.14 0.00 0.00 11.71 0.00 0.00 0.00 0.00
