@@ -379,7 +379,7 @@ lineWidget->AddObserver(vtkCommand::InteractionEvent,myCallback);
 
 **vtkPlaneWidget.** This widget can be used to orient and position a finite plane. The plane resolution is variable. The widget produces an implicit function, which may be queried via the GetPlane method and a polygonal output, which may be queried via the GetPolyData methods The plane widget may be used for probing and seeding streamlines. The plane has four handles (at its corner vertices), a normal vector, and the plane itself. By grabbing one of the four handles (use the left mouse button), the plane can be resized. By grabbing the plane itself, the entire plane can be arbitrarily translated. Pressing Control while grabbing the plane will spin the plane around the normal. If you select the normal vector, the plane can be arbitrarily rotated. Selecting any part of the widget with the middle mouse button enables translation of the plane along its normal.
 
-![{Plane}](images/plane.png)
+![Plane](images/plane.png)
 
 *Plane Widget*
 
@@ -893,7 +893,7 @@ vtkSeedRepresentation *rep = vtkSeedRepresentation::New();
 rep->SetHandleRepresentation(handle);
 vtkSeedWidget *widget = vtkSeedWidget::New();
 widget->SetInteractor(iren);
-widget->SetRepresentation(rep); .
+widget->SetRepresentation(rep);
 ```
 
 ### Miscellaneous

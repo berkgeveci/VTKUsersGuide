@@ -7,9 +7,9 @@ The purpose of this chapter is to provide you with an overview of the Visualizat
 The Visualization Toolkit consists of two basic subsystems: a compiled C++ class library and an "interpreted" wrapper layer that lets you manipulate the compiled classes using the languages Java and Python. See Figure 3–1 below:
 
 <div align="center">
-<img src="images/Figure_3-1.png" alt="Figure 3-1: The Visualization Toolkit architecture" width="400">
+<img src="images/Figure_3-1.png" alt="Figure 3-1 The Visualization Toolkit architecture" width="400">
 
-*Figure 3–1: The Visualization Toolkit consists of a compiled (C++) core with language bindings for Python, Java, .NET, and JavaScript.*
+*Figure 3–1 The Visualization Toolkit consists of a compiled (C++) core with language bindings for Python, Java, .NET, and JavaScript.*
 </div>
 
 The advantage of this architecture is that you can build efficient (in both CPU and memory usage) algorithms in the compiled C++ language, and retain the rapid code development features of interpreted languages (avoidance of compile/link cycle, simple but powerful tools, and access to GUI tools). Of course, for those proficient in C++ and who have the tools to do so, applications can be built entirely in C++.
@@ -155,25 +155,25 @@ The Visualization Toolkit uses a data flow approach to transform information int
 
 Data objects represent data of various types. The class vtkDataObject can be viewed as a generic "blob" of data. Data that has a formal structure is referred to as a dataset (class vtkDataSet). Figure 3–2 shows the dataset objects supported in VTK.
 
-<img src="images/Figure_3-2.png" alt="Figure 3-2: Dataset types found in VTK" width="500">
+<img src="images/Figure_3-2.png" alt="Figure 3-2 Dataset types found in VTK" width="500">
 
-*Figure 3–2: Dataset types found in VTK. Note that unstructured points can be represented by either polygonal data or unstructured grids.*
+*Figure 3–2 Dataset types found in VTK. Note that unstructured points can be represented by either polygonal data or unstructured grids.*
 
 Datasets consist of a geometric and topological structure (points and cells) as illustrated by the figure; they also have associated attribute data such as scalars or vectors. The attribute data can be associated with the points or cells of the dataset. Cells are topological organizations of points; cells form the atoms of the dataset and are used to interpolate information between points. VTK supports over twenty cell types including vertices, lines, triangles, quadrilaterals, tetrahedra, hexahedra, and higher-order variants. Figure 3–3 shows the attribute data supported by VTK.
 
-<img src="images/Figure_3-3.png" alt="Figure 3-3: Data attributes" width="550">
+<img src="images/Figure_3-3.png" alt="Figure 3-3 Data attributes" width="550">
 
-*Figure 3–3: Data attributes associated with the points and cells of a dataset.*
+*Figure 3–3 Data attributes associated with the points and cells of a dataset.*
 
 Algorithms, also referred to generally as filters, operate on data objects to produce new data objects. Algorithms and data objects are connected together to form visualization pipelines (i.e., dataflow networks). Figure 3–4 is a depiction of a visualization pipeline.
 
-![Figure 3-4: Visualization pipeline](images/Figure_3-4.png)
+![Figure 3-4 Visualization pipeline](images/Figure_3-4.png)
 
-*Figure 3–4: Data objects are connected with algorithms (filters) to create the visualization pipeline.*
+*Figure 3–4 Data objects are connected with algorithms (filters) to create the visualization pipeline.*
 
-<img src="images/Figure_3-5.png" alt="Figure 3-5: Algorithm types" width="650">
+<img src="images/Figure_3-5.png" alt="Figure 3-5 Algorithm types" width="650">
 
-*Figure 3–5: Different types of algorithms. Filters ingest one or more inputs and produce one or more outputs.*
+*Figure 3–5 Different types of algorithms. Filters ingest one or more inputs and produce one or more outputs.*
 
 This figure together with Figure 3–5 illustrate some important visualization concepts. Source algorithms produce data by reading (reader objects) or constructing one or more data objects (procedural source objects). Filters ingest one or more data objects and generate one or more data objects on output. Mappers (or in some cases, specialized actors) take the data and convert it into a visual representation that is displayed by the rendering engine. A writer can be thought of as a type of mapper that writes data to a file or stream.
 
@@ -207,9 +207,9 @@ the source returns the correct number of points. In the first example, no comput
 
 Normally, you do not need to manually invoke Update() because the filters are connected into a visualization pipeline. In this case, when the actor receives a request to render itself, it forwards the method to its mapper, and the Update() method is automatically sent through the visualization pipeline. A high-level view of pipeline execution appears in Figure 3–6.
 
-![Figure 3-6: Pipeline execution](images/Figure_3-6.png)
+![Figure 3-6 Pipeline execution](images/Figure_3-6.png)
 
-*Figure 3–6: Conceptual overview of pipeline execution.*
+*Figure 3–6 Conceptual overview of pipeline execution.*
 
 As this figure illustrates, the `Render()` method often initiates the request for data; this request is then passed up through the pipeline. Depending on which portions of the pipeline are out-of-date, the filters in the pipeline may reexecute, thereby bringing the data at the end of the pipeline up-to-date; the up-to-date data is then rendered by the actor.
 

@@ -342,13 +342,13 @@ There are two different classes for appending images in VTK allowing images to b
 
 *Figure 6–7 Appending three 2D images along the X axis with PreserveExtents off.*
 
- Recall that an image may be 1-, 2-, or 3-dimensional. When combined spatially, the output image may increase dimensionality. For example, you can combine multiple independent one-dimensional rows to form a two-dimensional image, or you may combine a stack of 2D images to form a volume. The vtkImageAppend filter combines a set of images spatially using one of two methods. If the PreserveExtents instance variable is turned off, then the images are appended along the axis defined by the AppendAxis instance variable. Except along the AppendAxis, the input images must all have the same dimensions, and they must all have the same scalar type and number of scalar components. The origin and spacing of the output image will be the same as the origin and spacing of the first input image. An example of combining three 2D images along AppendAxis 0 (the X axis) to form a wider 2D image is shown in Figure 6–7. In Figure 6–8 we see an example where a set of 2D XY images are combined along AppendAxis 2 (the Z axis) to form a volume.
+Recall that an image may be 1-, 2-, or 3-dimensional. When combined spatially, the output image may increase dimensionality. For example, you can combine multiple independent one-dimensional rows to form a two-dimensional image, or you may combine a stack of 2D images to form a volume. The vtkImageAppend filter combines a set of images spatially using one of two methods. If the PreserveExtents instance variable is turned off, then the images are appended along the axis defined by the AppendAxis instance variable. Except along the AppendAxis, the input images must all have the same dimensions, and they must all have the same scalar type and number of scalar components. The origin and spacing of the output image will be the same as the origin and spacing of the first input image. An example of combining three 2D images along AppendAxis 0 (the X axis) to form a wider 2D image is shown in Figure 6–7. In Figure 6–8 we see an example where a set of 2D XY images are combined along AppendAxis 2 (the Z axis) to form a volume.
 
 ![Figure 6-8](images/Figure_6-8.png)
 
 *Figure 6–8 Appending 2D (XY) images along the Z axis to form a 3D volume.*
 
- If the PreserveExtents instance variable is on, the vtkImageAppend filter will create an output that contains the set of input images based on the union of their whole extents. The origin and spacing are copied from the first input image, and the output image is initialized to 0. Each input image is then copied into the output image. No blending is performed when two input images both define the same pixel in the output image. Instead, the order of the input images determines the value in the output image, with the highest numbered (last added) input image value stored in the output pixel. An example of appending images with PreserveExtents on with three co-planar non-overlapping 2D input images is shown in Figure 6–9.
+If the PreserveExtents instance variable is on, the vtkImageAppend filter will create an output that contains the set of input images based on the union of their whole extents. The origin and spacing are copied from the first input image, and the output image is initialized to 0. Each input image is then copied into the output image. No blending is performed when two input images both define the same pixel in the output image. Instead, the order of the input images determines the value in the output image, with the highest numbered (last added) input image value stored in the output pixel. An example of appending images with PreserveExtents on with three co-planar non-overlapping 2D input images is shown in Figure 6–9.
 
 ![Figure 6-9](images/Figure_6-9.png)
 
@@ -360,7 +360,7 @@ The vtkImageAppendComponents filter can be used to combine the components of mul
 
 ![Figure 6-10](images/Figure_6-10.png)
 
-*Figure 6–10. Using vtkImageAppendComponents to combine three single-component images into a single color image. *
+*Figure 6–10 Using vtkImageAppendComponents to combine three single-component images into a single color image.*
 
 ### Map Image to Color
 
@@ -488,7 +488,7 @@ The vtkImageMathematics filter provides basic unary and binary mathematical oper
 &nbsp; &nbsp; OP<sub>n</sub> = fabs( IP<sub>n</sub> )<br/>
 **VTK_SQR:** Square the input image values.<br/>
 &nbsp; &nbsp; OP<sub>n</sub> = IP<sub>n</sub> * IP<sub>n</sub><br/>
-**VTK_SQRT:** Take the square root of the input image values.</br>
+**VTK_SQRT:** Take the square root of the input image values.<br/>
 &nbsp; &nbsp; OP<sub>n</sub> = sqrt( IP<sub>n</sub> )<br/>
 **VTK_ATAN:** Compute the arctangent of the input image values.<br/>
 &nbsp; &nbsp; OP<sub>n</sub> = atan( IP<sub>n</sub> )<br/>

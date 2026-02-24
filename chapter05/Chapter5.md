@@ -2,7 +2,7 @@
 
 Some basic tools to render and interact with data were presented in the previous chapter. In this chapter we'll show you a variety of visualization techniques. These techniques (implemented as filters) are organized according to the type of data they operate on. Some filters are general and can be applied to any type of data—those filters that accept input of class vtkDataSet (or any subclass). Many filters are more specialized to the type of input they accept (e.g., vtkPolyData). There is one class of filters—those that accept input of type vtkImageData (or its obsolete subclass vtkStructuredPoints)—that are not addressed in this chapter. Instead, filters of this type are described in the next chapter (Chapter 6, "Image Processing and Visualization").
 
-Please keep two things to keep in mind while you read this chapter. First, filters generate a variety of output types, and the output type is not necessarily the same as the input type. Second, filters are used in combination to create complex data processing pipelines. Often there are patterns of usage, or common combinations of filters, that are used. In the following examples you may wish to note these combinations.
+Please keep two things in mind while you read this chapter. First, filters generate a variety of output types, and the output type is not necessarily the same as the input type. Second, filters are used in combination to create complex data processing pipelines. Often there are patterns of usage, or common combinations of filters, that are used. In the following examples you may wish to note these combinations.
 
 ## 5.1 Visualizing vtkDataSet (and Subclasses)
 
@@ -10,7 +10,7 @@ In this section, we'll show you how to perform some common visualization operati
 
 ### Working With Data Attributes
 
-Data attributes are information associated with the structure of the dataset (as described in Section 3.3, "The Visualization Pipeline"). In VTK, attribute data is associated with points (point attribute data) and cells (cell attribute data). Attribute data, along with the dataset structure, are processed by the many VTK filters to generate new structures and attributes. A general introduction to attribute data is beyond the scope of this section, but a simple example will demonstrate the basic ideas.
+Data attributes are information associated with the structure of the dataset (as described in Section 3.1, "The Visualization Pipeline"). In VTK, attribute data is associated with points (point attribute data) and cells (cell attribute data). Attribute data, along with the dataset structure, are processed by the many VTK filters to generate new structures and attributes. A general introduction to attribute data is beyond the scope of this section, but a simple example will demonstrate the basic ideas.
 
 Data attributes are simply vtkDataArrays which may be labeled as being one of scalars, vectors, tensors, normals, texture coordinates, global ids (for identifying redundant elements), or pedigree ids (for tracing element history up the pipeline). The points and the cells of a vtkDataSet may have their own independent data attributes. The data attributes may be associated with the points or cells of a vtkDataSet. Every vtkDataArray associated with a vtkDataSet is a concrete subclass of vtkDataArray, such as vtkFloatArray or vtkIntArray. These data arrays can be thought of as contiguous, linear blocks of memory of the named native type. Within this linear block, the data array is thought to consist of subarrays or "tuples." Creating attribute data means instantiating a data array of desired type, specifying the tuple size, inserting data, and associating it with a dataset, as shown in the following Python script. The association may have the side effect of labeling the data as scalars, vectors, tensors, texture coordinates, or normals. For example:
 
@@ -178,7 +178,7 @@ In VTK, the vtkGlyph3D class allows you to create glyphs that can be scaled, col
 
 ![Figure 5-3](images/Figure_5-3.png)
 
-*Figure 5–3 Glyphs showing  surface normals.*
+*Figure 5–3 Glyphs showing surface normals.*
 
 ```python
 from vtkmodules.vtkCommonTransforms import vtkTransform

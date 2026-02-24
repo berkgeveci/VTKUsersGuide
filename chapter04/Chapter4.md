@@ -2,7 +2,7 @@
 
 The purpose of this chapter is to introduce you to some of VTK's capabilities by way of a selected set of examples. Our focus will be on commonly used methods and objects, and combinations of objects. We will also introduce important concepts and useful applications. By no means are all of VTK's features covered; this chapter is meant to give you a broad overview of what's possible. You'll want to refer to online documentation or class .h files to learn about other options each class might have.
 
-Most of the examples included here are implemented in the Python programming language. They could just as easily be implemented in C++ and Java — the conversion process between the languages is straightforward. (See Section 3.3.) C++ does offer some advantages, mainly access and manipulation of data structures and pointers, and some examples reflect this by being implemented in the C++ language.
+Most of the examples included here are implemented in the Python programming language. They could just as easily be implemented in C++ and Java — the conversion process between the languages is straightforward. (See Section 3.7.) C++ does offer some advantages, mainly access and manipulation of data structures and pointers, and some examples reflect this by being implemented in the C++ language.
 
 Each example presented here includes sample code and often a supplemental image. We recommend that you run and understand the example and then experiment with object methods and parameters. You may also wish to try suggested alternative methods and/or classes. Often, the Visualization Toolkit offers several approaches to achieve similar results. Note also that the scripts are often modified from what's found in the source code distribution. This is done to simplify concepts or remove extraneous code.
 
@@ -771,7 +771,7 @@ Often times texture coordinates are not available, usually because they are not 
 
 Picking is a common visualization task. Picking is used to select data and actors or to query underlying data values. A pick is made when a display position (i.e., pixel coordinate) is selected and used to invoke vtkAbstractPicker's Pick() method. Depending on the type of picking class, the information returned from the pick may be as simple as an x-y-z global coordinate, or it may include cell ids, point ids, cell parametric coordinates, the instance of vtkProp that was picked, and/or assembly paths. The syntax of the pick method is as follows.
 
-```
+```text
 Pick(selectionX, selectionY, selectionZ, Renderer)
 ```
 Notice that the pick method requires a renderer. The actors associated with the renderer are the candidates for pick selection. Also, selectionZ is typically set to 0.0 — it relates to depth in the z-buffer. (In typical usage, this method is not invoked directly. Rather the user interacts with the class vtkRenderWindowInteractor which manages the pick. In this case, the user would control the picking process by assigning an instance of a picking class to the vtkRenderWindowInteractor, as we will see in a later example.)

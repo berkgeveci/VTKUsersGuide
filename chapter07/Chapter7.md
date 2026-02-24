@@ -108,7 +108,7 @@ In order to control the appearance of a 3D volume of scalar values, several mapp
 
 From a user's point of view, vtkPiecewiseFunction has two types of methods—those that add information to the mapping, and those that clear out information from the mapping. When information is added to a mapping, it is considered to be a point sample of the mapping with interpolation used to determine values between the specified ones. For example, consider the following section of a script on the left that produces the transfer function drawn on the right:
 
-![tf](images/Figure_7-2-1.png)
+![Figure 7-2-1 Piecewise transfer function](images/Figure_7-2-1.png)
 
 ```python
 from vtkmodules.vtkCommonDataModel import vtkPiecewiseFunction
@@ -125,7 +125,7 @@ Points can be added to the mapping at any time. If a mapping is redefined it rep
 <table>
   <tr>
     <td>
-      <img src="images/Figure_7-2-2.png" alt="tf1" width="400">
+      <img src="images/Figure_7-2-2.png" alt="Figure 7-2-2 Color transfer function" width="400">
     </td>
     <td>
 
@@ -139,7 +139,7 @@ tfun.AddSegment(100, 0.8, 150, 0.2)
 
   <tr>
     <td>
-      <img src="images/Figure_7-2-3.png" alt="tf2" width="400">
+      <img src="images/Figure_7-2-3.png" alt="Figure 7-2-3 Gradient opacity transfer function" width="400">
     </td>
     <td>
 
@@ -404,11 +404,13 @@ The vtkGPUVolumeRayCastMapper supports multiple blend modes that control how sam
 An example of the images that can be generated using different blend modes is shown in Figure 7–7.
 
 ![Figure 7-8](images/Figure_7-8.png)
+
 *Figure 7–8 The effect of interpolation order in composite ray casting.*
 
 When using composite blending with trilinear interpolation, the order of interpolation and classification affects the result (Figure 7–8). Interpolating first generally produces smoother images: the scalar value at the sample point is interpolated first, then classified through the transfer functions. Classifying first applies the transfer functions at the eight vertices of the cell, then interpolates the resulting RGBA values. The interpolate-first method makes the underlying assumption that if two neighboring data points have values of 10 and 100, then a value of 50 exists somewhere between them. In the case where material is being classified by scalar value, this may not be the case. For example, consider CT data where values below 20 are air (transparent), values from 20 to 80 are soft tissue, and values above 80 are bone. If interpolation is performed first, then bone can never be adjacent to air — there must always be soft tissue between them. This is not true inside the mouth where teeth meet air.
 
 ![Figure 7-9](images/Figure_7-9.png)
+
 *Figure 7–9 Different methods for interpolation. On the left, nearest neighbor interpolation. On the right, trilinear interpolation.*
 
 The value of the interpolation type instance variable in the vtkVolumeProperty is important to ray casting. There are two options: SetInterpolationTypeToNearest() (the default) which will use a nearest neighbor approximation when sampling along the ray, and SetInterpolationTypeToLinear() which will use trilinear interpolation during sampling. Using the trilinear interpolation produces smoother images with less artifacts, but generally takes a bit longer. The difference in image quality obtained with these two methods is shown in Figure 7–9. A sphere is voxelized into a 50x50x50 voxel volume, and rendered using alpha compositing with nearest neighbor interpolation on the left and trilinear interpolation on the right. In the image of the full sphere it may be difficult to distinguish between the two interpolation methods, but by zooming up on just a portion of the sphere it is easy to see the individual voxels in the left image.
@@ -464,6 +466,7 @@ In Figure 7–11 you can see a comparison of images generated with different tec
 It is often necessary to achieve a certain frame rate in order to effectively interact with the data, and it may be necessary to trade off accuracy in order to achieve speed. Fortunately, there are ways to do this for many of the volume rendering approaches. In fact, several of them will provide this functionality for you automatically by determining an appropriate accuracy level in order to obtain the desired update rate specified in the vtkRenderWindow.
 
 ![Figure 7-12](images/Figure_7-12.png)
+
 *Figure 7–12 The effect of changing image sample distance on image quality.*
 
 The support for achieving a desired frame rate for vtkFixedPointVolumeRayCastMapper, vtkUnstructuredGridVolumeRayCastMapper, and vtkUnstructuredGridVolumeZSweepMapper is available by default in VTK. You can set the desired update rate in the vtkRenderWindow, or the StillUpdateRate and the DesiredUpdateRate in the interactor if you are using one. Due to the fact that the time required for these rendering techniques is mostly dependent on the size of the image, the mapper will automatically attempt to achieve the desired rendering rate by reducing the number of rays that are cast, or the size of the image that is generated. By default, the automatic adjustment is on. In order to maintain interactivity, an abort check procedure should be specified in the render window so that the user will be able to interrupt the higher resolution image in order to interact with the data again.

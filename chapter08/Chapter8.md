@@ -73,7 +73,7 @@ Now we wish to visualize some of the relationships in this table. The table has 
 
 The vtkTableToGraph algorithm needs to know what columns should be used to generate vertices, and what pairs of columns should become edges, linking vertices together. So, in our example, we may wish to make a graph whose vertices represent names, countries, and disciplines. To do this we call AddLinkVertex() with the name of a column to make vertices from. All distinct values in that column will become vertices in the graph. So, AddLinkVertex('Country', ...) will make a vertex in the output graph for each distinct country name in the “Country” column of the table. The second argument to AddLinkVertex() provides the domain to be associated with those vertices. Domains are important for entity resolution. If, for example, “Country” and “Name” were given the same domain name, a country named “Chad” would be merged with a person with the name “Chad”. Giving each column a different domain will avoid these conflicts. There are situations, however, where two columns of the table should be given the same domain. For example, in a table of communications, there may columns named “From” and “To”. These should be assigned the same domain (perhaps named “Person”), so that a person's vertex would be merged into the same vertex regardless of whether that person was a sender or a recipient. The third parameter of AddLinkVertex() is described in the "Hidden Vertices" section below.
 
-Now that the vertices are defined, we can define the set of edges in the graph with AddLinkEdge(). AddLinkEdge() takes two table column names, and produces an edge between two vertices A and B every time A and B appear together in the same row in those two columns. So the call AddLinkEdge('Name', 'Country') will add an edge in the graph between each athlete and his or her country. Similarly, AddLinkEdge('Name', 'Discipline') will add an edge between an athlete and each discipline he or she participates in. Figure 8–1 shows the result of converting the table of medals into a graph. The colors of the vertices in the graph indicate the domain to which they belong.Since you may only assign colors with a numeric array, the program uses vtkStringToCategory to convert the domain array (which contains strings), into numeric identifiers for each distinct vertex.
+Now that the vertices are defined, we can define the set of edges in the graph with AddLinkEdge(). AddLinkEdge() takes two table column names, and produces an edge between two vertices A and B every time A and B appear together in the same row in those two columns. So the call AddLinkEdge('Name', 'Country') will add an edge in the graph between each athlete and his or her country. Similarly, AddLinkEdge('Name', 'Discipline') will add an edge between an athlete and each discipline he or she participates in. Figure 8–1 shows the result of converting the table of medals into a graph. The colors of the vertices in the graph indicate the domain to which they belong. Since you may only assign colors with a numeric array, the program uses vtkStringToCategory to convert the domain array (which contains strings), into numeric identifiers for each distinct vertex.
 
 **Attributes.** The edges in vtkTableToGraph's output have the full set of attributes defined in the table. Namely each edge has associated with it all of the entries in the row of the table that produced the edge.
 
@@ -144,6 +144,7 @@ The code begins with reading the same tab-delimited file with Olympic medal data
 Similarly, the second vtkGroupLeafVertices adds a level representing countries below the disciplines. The data is already split by discipline, so each country may appear several times, once under each discipline where that country won a medal. This is one main difference between converting a table to a graph or a tree. Graphs are a more complex structure, which allows vertices representing the same entity to appear only once. Trees, on the other hand, are simpler structures that are often simpler to comprehend, but often require duplication of data because of their connectivity constraints. The result of converting the table into a tree and visualizing it with a vtkTreeRingView is shown in Figure 8–2. The tree ring view and graph layout view are described further in the "Graph Visualization Techniques" section below. Simply reversing the two vtkGroupLeafVertices algorithms would produce a tree that was organized first by country, then by discipline.
 
 ![Figure 8-2](images/Figure_8-2.png)
+
 *Figure 8–2 A table of Olympic medals visualized in a tree ring view.*
 
 These filters are available for processing vtkTables or attribute data in other data objects: 
@@ -200,7 +201,7 @@ A primary step that must take place in information visualization is to embed the
 
 ![Figure 8-3](images/Figure_8-3.png)
 
-*Figure 8–3 A simple graph view*
+*Figure 8–3 A simple graph view.*
 
 ### Vertex Layout
 To determine where vertices are positioned, one places a vtkGraphLayout class into the pipeline. This class is responsible for the overall task of assigning coordinates to vertices, but it leaves the details of coordinate assignment to a swappable helper class. The helper class is an example of a strategy. This two part structure maximizes flexibility and minimizes complexity. Thus, in a typical graph visualization, a graph is piped into the vtkGraphLayout class after which each vertex has a vtkPoint assigned. The pipeline author can choose amongst a number of strategies. Strategies may vary from springbased layouts to clustering methods. Each strategy class is subclassed from vtkGraphLayoutStrategy, all of which can be plugged into vtkGraphLayout. Examples of currently available layout strategies include: 
@@ -325,7 +326,8 @@ Despite the flexibility afforded by the above classes, visual clutter is frequen
 - vtkSplineGraphEdges - subsample graph edges to make smooth (splined) curves.
 
 ![Figure 8-4](images/Figure_8-4.png)
-*Figure 8–4 The result of executing the code to draw a graph*
+
+*Figure 8–4 The result of executing the code to draw a graph.*
 
 Here is an example of performing edge bundling using splines. The following code performs a tree layout, then uses vtkGraphHierarchicalBundle to display bundled edges from the graph on top of the tree (Figure 8–5).
 
@@ -371,7 +373,7 @@ For trees or graphs with embedded hierarchical information (i.e. a graph with an
 
 ![Figure 8-6](images/Figure_8-6.png)
 
-*Figure 8-6 Treemap, tree ring, and icicle views displaying the partitioning of classes into libraries, along with links connecting each class to its superclass.*
+*Figure 8–6 Treemap, tree ring, and icicle views displaying the partitioning of classes into libraries, along with links connecting each class to its superclass.*
 
 For these techniques, each vertex is typically assigned a set of values in a 4-tuple array representing the placement and size of a rectangular region (or circular sector in the case of the tree ring view). These methods also utilize a layout strategy which is plugged into vtkAreaLayout. Currently available strategies include: 
 - vtkBoxLayoutStrategy (treemap) - a tree map layout that puts vertices in square-ish boxes by recursive partitioning of the space for children vertices. 
@@ -567,7 +569,7 @@ int main(int argc, char* argv[])
 
 <img src="images/Figure_8-9.png" alt="Figure 8-9" width="400">
 
-*Figure 8–9 The result of computing the breadth-first distance from a starting vertex (labeled “0”)*
+*Figure 8–9 The result of computing the breadth-first distance from a starting vertex (labeled "0").*
 
 As pipeline components the graph algorithms can also be combined in unique ways. For instance the following Python snippet shows two graph algorithms working together.
 
@@ -610,7 +612,7 @@ Here both vertex and edge centrality are computed by the vtkBoostBrandesCentrali
 
 ![Figure 8-10](images/Figure_8-10.png)
 
-*Figure 8–10 Graph showing a minimum spanning tree (purple) based on centrality computed on the graph edges*
+*Figure 8–10 Graph showing a minimum spanning tree (purple) based on centrality computed on the graph edges.*
 
 Many of these algorithms are demonstrated in the VTK source tree under the Infovis examples directory.
 
@@ -710,7 +712,7 @@ In practice anyone can add a graph algorithm to VTK. There are several approache
 
 ![Figure 8-11](images/Figure_8-11.png)
 
-*Figure 8–11 A graph labeled by the computed degree of each vertex*
+*Figure 8–11 A graph labeled by the computed degree of each vertex.*
 
 ```python
 from vtkmodules.vtkCommonCore import vtkIntArray
@@ -960,7 +962,7 @@ As an example, consider Figure 8–12. It has 6 observations of 5 variables. If 
 
 ![Figure 8-12](images/Figure_8-12.png)
 
-*Figure 8–12 A table of observations that might serve as input to a statistics algorithm*
+*Figure 8–12 A table of observations that might serve as input to a statistics algorithm.*
 
 ### Phases
 
@@ -972,7 +974,7 @@ Each statistics algorithm performs its computations in a sequence of common phas
 
 <img src="images/Figure_8-13.png" alt="Figure 8-13" width="450">
 
-*Figure 8–13 An example utilization of VTK's statistics algorithms with the OverView client*
+*Figure 8–13 An example utilization of VTK's statistics algorithms with the OverView client.*
 
 An example of the utilization of VTK's statistical tools with the Qt application client is illustrated in Figure 8–13; specifically, the descriptive, correlative, and order statistics classes are used in conjunction with various table views and plots. With the exception of contingency statistics which can be performed on any type (nominal, cardinal, or ordinal) of variables, all currently implemented algorithms require cardinal or ordinal variables as inputs. The following statistics algorithms are currently available in VTK. 
 
@@ -992,7 +994,7 @@ These algorithms accept a single column (or a set of single columns) and perform
 - Derive: calculate arbitrary quantiles, such as 5-point statistics (quartiles) for box plots, deciles, percentiles, etc.;
 - Assess: mark with the quantile index.
 
-### Bivariate statistics:
+### Bivariate Statistics
 
 These algorithms accept a pair(s) of columns to operate on, and perform a comparative analysis.
 
@@ -1008,7 +1010,7 @@ These algorithms accept a pair(s) of columns to operate on, and perform a compar
 - Derive: calculate joint, conditional, and marginal probabilities, as well as information entropies;
 - Assess: mark with joint and conditional PDF values, as well as pointwise mutual informations.
 
-### Multivariate statistics:
+### Multivariate Statistics
 
 These filters all accept multiple requests Ri, each of which is a set of ni variables upon which simultaneous statistics should be computed. 
 
@@ -1094,13 +1096,13 @@ Many information visualization, scientific, engineering, and economic problems i
 
 ![Figure 8-14](images/Figure_8-14.png)
 
-*Figure 8–14 Mapping two-dimensional term-document frequency data to a matrix for test analysis*
+*Figure 8–14 Mapping two-dimensional term-document frequency data to a matrix for text analysis.*
 
 In physical experiments, a series of measurements often form a tensor of three or more dimensions, i.e. weather measurements taken at multiple stations across multiple times. In economics, a dataset containing changes in stock value for differing combinations of stock symbol, date, and time horizon could also be represented as a 3D tensor. Although these examples originate in widely varying domains, representing their data using multi-dimensional arrays makes it possible to bring a common set of methods from multi-linear algebra to bear on their analysis.
 
 ![Figure 8-15](images/Figure_8-15.png)
 
-*Figure 8–15 Mapping three-dimensional time-author-term data to a tensor for text analysis*
+*Figure 8–15 Mapping three-dimensional time-author-term data to a tensor for text analysis.*
 
 ![Figure 8-16](images/Figure_8-16.png)
 
@@ -1122,7 +1124,8 @@ At the top of the N-Dimensional array hierarchy, vtkArray provides methods and f
 - Implement algorithms that modify the structure of an array without needing to know what type of value it contains, such as an algorithm to transpose a matrix.
 
 ![Figure 8-17](images/Figure_8-17.png)
-*Figure 8–17 VTK N-dimensional array classes*
+
+*Figure 8–17 VTK N-dimensional array classes.*
 
 The vtkTypedArray<T> template class derives from vtkArray, and is used to provide strongly-typed access to the values stored in the array while ignoring the type of storage used. Using vtkTypedArray<T>, you can efficiently manipulate arrays that contain a specific type (int, double, string, etc) while ignoring how the array data is stored (dense, sparse, etc).
 
